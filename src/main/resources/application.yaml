@@ -1,0 +1,94 @@
+server:
+  forward-headers-strategy: framework
+  tomcat:
+    remoteip:
+      internal-proxies: "10\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}|192\\.168\\.\\d{1,3}\\.\\d{1,3}|172\\.(1[6-9]|2\\d|3[0-1])\\.\\d{1,3}\\.\\d{1,3}|127\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}|::1|0:0:0:0:0:0:0:1"
+
+spring:
+  application:
+    name: task-management-system
+  profiles:
+    active: dev
+
+  # JPA / Hibernate
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+        globally_quoted_identifiers: true
+        dialect: org.hibernate.dialect.MySQLDialect
+
+  # Mail
+  mail:
+    host: ${MAIL_HOST:smtp.gmail.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:your-email@gmail.com}
+    password: ${MAIL_PASSWORD:your-app-password}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+
+  # ActiveMQ Artemis (embedded)
+  artemis:
+    mode: embedded
+    embedded:
+      enabled: true
+      persistent: false
+
+  # Thymeleaf
+  thymeleaf:
+    prefix: classpath:/templates/
+    suffix: .html
+    encoding: UTF-8
+
+  # Multipart file upload
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 10MB      # Giới hạn 1 file
+      max-request-size: 60MB   # Giới hạn toàn bộ request (nhiều file cùng lúc)
+
+# App custom config
+app:
+  jwt:
+    secret: ${JWT_SECRET:mini-jira-intern-super-secret-key-must-be-at-least-256bits-long}
+    expiration-ms: ${JWT_EXPIRATION_MS:900000}  # 15 phút
+
+  refresh-token:
+    expiration-days: ${RT_EXPIRATION_DAYS:7}     # 7 ngày
+    sliding-expiry: ${RT_SLIDING:true}           # true=Sliding, false=Fixed
+
+  jms:
+    notification-queue: notification.queue
+    email-verification-queue: email.verification.queue
+    password-reset-queue: password.reset.queue
+    project-member-queue: project.member.queue
+
+  scheduler:
+    deadline-reminder-hours: 24
+    failed-notification-cron: ${FAILED_NOTIF_CRON:0 */15 * * * *}
+    failed-notification-max-retries: 3
+    failed-notification-interval-minutes: 30
+    failed-notification-batch-size: 50
+
+  base-url: ${BASE_URL:http://localhost:8080}
+
+  # Upload ảnh
+  upload:
+    # Thư mục gốc lưu file — tương đối với CWD khi chạy app
+    # Cấu trúc: uploads/issues/ | uploads/comments/ | uploads/avatars/ | uploads/projects/
+    dir: ${UPLOAD_DIR:uploads}
+    # Kích thước tối đa 1 file (bytes): 10 MB
+    max-file-size: 10485760
+    # MIME type được chấp nhận (phân cách bằng dấu phẩy)
+    allowed-types: "image/jpeg,image/png,image/gif,image/webp"
+    # Giới hạn số ảnh / issue
+    max-images-per-issue: 10
+    # Giới hạn số ảnh / comment
+    max-images-per-comment: 5

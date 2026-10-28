@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Mini Jira</title>
+    <link rel="stylesheet" href="css/style.css"/>
+    <script>
+        (function() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            if (savedTheme === 'dark') {
+                document.documentElement.classList.add('dark');
+                document.documentElement.setAttribute('data-theme', 'dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+                document.documentElement.setAttribute('data-theme', 'light');
+            }
+        })();
+    </script>
+    <!-- Tailwind CSS (CDN) -->
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <!-- Chart.js (CDN) -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Google Material Symbols -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        "background": "var(--bg-app)",
+                        "surface": "var(--surface-lowest)",
+                        "surface-container-lowest": "var(--surface-lowest)",
+                        "surface-container-low": "var(--surface-low)",
+                        "surface-container": "var(--surface-container)",
+                        "surface-container-high": "var(--surface-high)",
+                        "surface-container-highest": "var(--surface-highest)",
+                        "surface-variant": "var(--surface-variant)",
+                        "text-main": "var(--text-main)",
+                        "text-subtle": "var(--text-subtle)",
+                        "border": "var(--border-color)",
+                        "outline": "var(--outline)",
+                        "outline-variant": "var(--outline-variant)",
+                        "secondary-container": "var(--secondary-container)",
+                        "on-secondary-fixed": "var(--on-secondary-fixed)",
+                        "on-secondary-fixed-variant": "var(--on-secondary-fixed-variant)",
+                        "inverse-surface": "var(--surface-lowest)",
+                        "inverse-on-surface": "var(--text-main)",
+                        "on-background": "var(--text-main)",
+                        "on-surface": "var(--text-main)",
+                        
+                        "primary": "#0052CC",
+                        "primary-container": "#0747A6",
+                        "primary-fixed": "var(--primary-fixed)",
+                        "primary-fixed-dim": "var(--primary-fixed-dim)",
+                        "on-primary": "#ffffff",
+                        "surface-tint": "#0747A6",
+                        
+                        "success": "#36B37E",
+                        "warning": "#FFAB00",
+                        "danger": "#FF5630",
+                        "error": "#FF5630"
+                    },
+                    spacing: { "sidebar-width": "240px", "xs": "4px", "sm": "8px", "md": "16px", "lg": "24px", "xl": "48px" },
+                    fontFamily: {
+                        "headline-sm": ["Inter"], "label-sm": ["Inter"], "label-bold": ["Inter"], "display-lg": ["Inter"],
+                        "code": ["Inter"], "body-md": ["Inter"], "headline-md": ["Inter"], "body-lg": ["Inter"]
+                    },
+                    fontSize: {
+                        "headline-sm": ["20px", { "lineHeight": "28px", "fontWeight": "600" }],
+                        "label-sm": ["12px", { "lineHeight": "16px", "fontWeight": "400" }],
+                        "label-bold": ["12px", { "lineHeight": "16px", "fontWeight": "600" }],
+                        "display-lg": ["30px", { "lineHeight": "36px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "code": ["13px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }]
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { background-color: var(--bg-app); color: var(--text-main); }
+        .card-shadow { box-shadow: var(--shadow-sm); transition: box-shadow 0.2s ease-in-out; }
+        .card-shadow:hover { box-shadow: var(--shadow-md); }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 20; }
+
+        /* Dark mode native dropdown styling & readability */
+        :root { color-scheme: light; }
+        html.dark, body.dark, .dark, [data-theme="dark"] { color-scheme: dark; }
+
+        select {
+            color-scheme: light dark;
+        }
+
+        html.dark select, .dark select, [data-theme="dark"] select {
+            color-scheme: dark !important;
+            color: #F8FAFC !important;
+        }
+
+        select option {
+            background-color: #FFFFFF !important;
+            color: #172B4D !important;
+            padding: 6px 10px;
+        }
+
+        html.dark select option,
+        .dark select option,
+        [data-theme="dark"] select option {
+            background-color: #1E293B !important;
+            color: #F8FAFC !important;
+        }
+
+        html.dark select option:checked,
+        .dark select option:checked,
+        [data-theme="dark"] select option:checked {
+            background-color: #2563EB !important;
+            color: #FFFFFF !important;
+        }
+
+        html.dark select option:hover,
+        .dark select option:hover,
+        [data-theme="dark"] select option:hover {
+            background-color: #334155 !important;
+            color: #FFFFFF !important;
+        }
+    </style>
+</head>
+<body class="font-body-md text-body-md antialiased overflow-x-hidden bg-background text-text-main">
+
+    <!-- Modular Sidebar -->
+    <div id="appSidebar"></div>
+
+    <!-- Main Content -->
+    <main class="ml-sidebar-width p-xl bg-background min-h-screen">
+        <!-- Header with Switcher Tabs (Chuyển đổi giữa Thống kê dự án và Thời gian chuyển trạng thái) -->
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-lg gap-4 pb-4 border-b border-border">
+            <div>
+                <h2 class="font-display-lg text-display-lg text-text-main mb-xs" data-i18n="dashboard.title">Dashboard</h2>
+                <p class="font-body-md text-body-md text-text-subtle" data-i18n="dashboard.subtitle">Welcome back. Here's a summary of your workspace.</p>
+            </div>
+
+            <!-- Tab Switcher -->
+            <div class="inline-flex items-center p-1 bg-surface-container-low border border-border rounded-xl self-start sm:self-auto shrink-0 shadow-2xs">
+                <a href="dashboard.html" class="flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-semibold bg-primary text-white shadow-xs transition-all">
+                    <span class="material-symbols-outlined text-[18px]">bar_chart</span>
+                    <span>Thống kê dự án</span>
+                </a>
+                <a href="transitions.html" class="flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-semibold text-text-subtle hover:text-text-main hover:bg-surface-container-lowest transition-all">
+                    <span class="material-symbols-outlined text-[18px]">timelapse</span>
+                    <span>Thời gian chuyển trạng thái</span>
+                </a>
+            </div>
+        </div>
+
+        <!-- Filters Toolbar (Ảnh hưởng đến Tổng quan & Biểu đồ Workspace) -->
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-lg gap-4 bg-surface-container-lowest p-md rounded-xl border border-border card-shadow">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                    <span class="material-symbols-outlined text-[24px]">filter_alt</span>
+                </div>
+                <div>
+                    <h3 class="font-headline-sm text-base text-text-main font-semibold">Bộ Lọc Phân Tích</h3>
+                    <p class="text-xs text-text-subtle">Lọc phạm vi dữ liệu dự án và khoảng thời gian</p>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-3 flex-wrap">
+                <!-- Dropdown 1: Scope (Phạm vi dự án) -->
+                <div class="flex items-center gap-2 bg-surface-container-low border border-border rounded-lg px-3 py-1.5 shadow-2xs">
+                    <span class="material-symbols-outlined text-[18px] text-primary">folder_managed</span>
+                    <label for="filterScopeSelect" class="text-xs font-semibold text-text-subtle uppercase tracking-wide">Phạm vi:</label>
+                    <select id="filterScopeSelect" onchange="onDashboardFilterChange()" class="bg-transparent text-xs font-semibold text-text-main outline-none cursor-pointer border-none p-0 focus:ring-0">
+                        <option value="ALL" class="bg-white text-slate-800 dark:bg-slate-800 dark:text-slate-100">Tất cả dự án của tôi</option>
+                        <option value="MANAGED" class="bg-white text-slate-800 dark:bg-slate-800 dark:text-slate-100">Dự án tôi quản lý (PM)</option>
+                        <option value="ASSIGNED" class="bg-white text-slate-800 dark:bg-slate-800 dark:text-slate-100">Dự án có việc của tôi</option>
+                    </select>
+                </div>
+
+                <!-- Dropdown 2: Time Range (Khung thời gian) -->
+                <div class="flex items-center gap-2 bg-surface-container-low border border-border rounded-lg px-3 py-1.5 shadow-2xs">
+                    <span class="material-symbols-outlined text-[18px] text-primary">calendar_today</span>
+                    <label for="filterTimeRangeSelect" class="text-xs font-semibold text-text-subtle uppercase tracking-wide">Thời gian:</label>
+                    <select id="filterTimeRangeSelect" onchange="onDashboardFilterChange()" class="bg-transparent text-xs font-semibold text-text-main outline-none cursor-pointer border-none p-0 focus:ring-0">
+                        <option value="ALL_TIME" class="bg-white text-slate-800 dark:bg-slate-800 dark:text-slate-100">Toàn bộ thời gian</option>
+                        <option value="THIS_WEEK" class="bg-white text-slate-800 dark:bg-slate-800 dark:text-slate-100">Tuần này</option>
+                        <option value="THIS_MONTH" class="bg-white text-slate-800 dark:bg-slate-800 dark:text-slate-100">Tháng này</option>
+                        <option value="THIS_QUARTER" class="bg-white text-slate-800 dark:bg-slate-800 dark:text-slate-100">Quý này</option>
+                    </select>
+                </div>
+
+                <!-- Reset button -->
+                <button id="btnResetFilters" onclick="resetDashboardFilters()" class="hidden px-2.5 py-1.5 text-xs text-text-subtle hover:text-text-main hover:bg-surface-container-low rounded-lg transition-colors cursor-pointer items-center gap-1">
+                    <span class="material-symbols-outlined text-[16px]">restart_alt</span>
+                    <span>Đặt lại</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- 4 KPI Summary Cards (Tính từ toàn bộ dự án) -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-md mb-lg">
+            <div class="bg-surface-container-lowest p-md rounded-lg border border-border card-shadow flex flex-col justify-between h-32 relative overflow-hidden group">
+                <div class="absolute top-0 left-0 w-1 h-full bg-primary opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                <div class="flex justify-between items-start">
+                    <span class="font-label-bold text-label-bold text-text-subtle uppercase tracking-wide" data-i18n="dashboard.totalProjects">Total Projects</span>
+                    <span class="material-symbols-outlined text-text-subtle">account_tree</span>
+                </div>
+                <div>
+                    <span id="statTotalProjects" class="font-display-lg text-display-lg text-text-main block">...</span>
+                </div>
+            </div>
+            
+            <div class="bg-surface-container-lowest p-md rounded-lg border border-border card-shadow flex flex-col justify-between h-32 relative overflow-hidden group">
+                <div class="absolute top-0 left-0 w-1 h-full bg-slate-400 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                <div class="flex justify-between items-start">
+                    <span class="font-label-bold text-label-bold text-text-subtle uppercase tracking-wide" data-i18n="dashboard.todo">To Do</span>
+                    <span class="material-symbols-outlined text-text-subtle">pending_actions</span>
+                </div>
+                <div>
+                    <span id="statTodo" class="font-display-lg text-display-lg text-text-main block">...</span>
+                </div>
+            </div>
+
+            <div class="bg-surface-container-lowest p-md rounded-lg border border-border card-shadow flex flex-col justify-between h-32 relative overflow-hidden group">
+                <div class="absolute top-0 left-0 w-1 h-full bg-primary opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                <div class="flex justify-between items-start">
+                    <span class="font-label-bold text-label-bold text-text-subtle uppercase tracking-wide" data-i18n="dashboard.inProgress">In Progress</span>
+                    <span class="material-symbols-outlined text-text-subtle">loop</span>
+                </div>
+                <div>
+                    <span id="statInProgress" class="font-display-lg text-display-lg text-text-main block">...</span>
+                </div>
+            </div>
+
+            <div class="bg-surface-container-lowest p-md rounded-lg border border-border card-shadow flex flex-col justify-between h-32 relative overflow-hidden group">
+                <div class="absolute top-0 left-0 w-1 h-full bg-success opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                <div class="flex justify-between items-start">
+                    <span class="font-label-bold text-label-bold text-text-subtle uppercase tracking-wide" data-i18n="dashboard.done">Done</span>
+                    <span class="material-symbols-outlined text-text-subtle">task_alt</span>
+                </div>
+                <div>
+                    <span id="statDone" class="font-display-lg text-display-lg text-text-main block">...</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Biểu Đồ Cột: Grouped Bar Chart (Top 10 Projects) -->
+        <div class="bg-surface-container-lowest p-lg rounded-xl border border-border card-shadow mb-lg">
+            <div class="flex flex-col sm:flex-row justify-between sm:items-center mb-md gap-2">
+                <div>
+                    <h3 class="font-headline-sm text-lg text-text-main flex items-center gap-2">
+                        <span class="material-symbols-outlined text-primary text-[22px]">bar_chart</span>
+                        <span data-i18n="dashboard.distribution">Issue Distribution by Project</span>
+                    </h3>
+                    <p class="text-xs text-text-subtle mt-0.5" data-i18n="dashboard.distributionSubtitle">Grouped bar chart comparing task progress (Top 10 projects)</p>
+                </div>
+                <div class="flex items-center gap-4 text-xs font-medium text-text-subtle">
+                    <div class="flex items-center gap-1.5">
+                        <div class="w-3 h-3 rounded-sm bg-slate-400"></div>
+                        <span data-i18n="dashboard.chart.todo">To Do</span>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <div class="w-3 h-3 rounded-sm bg-primary"></div>
+                        <span data-i18n="dashboard.chart.inProgress">In Progress</span>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <div class="w-3 h-3 rounded-sm bg-success"></div>
+                        <span data-i18n="dashboard.chart.done">Done</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Canvas Container -->
+            <div class="relative w-full h-[360px] flex items-center justify-center">
+                <canvas id="projectDistributionChart" class="w-full h-full"></canvas>
+                <div id="chartEmptyState" class="hidden absolute inset-0 flex flex-col items-center justify-center text-text-subtle">
+                    <span class="material-symbols-outlined text-4xl mb-2 opacity-50">analytics</span>
+                    <span class="text-sm font-medium" data-i18n="dashboard.noData">No Data</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Access Banner to Transition Statistics -->
+        <div class="bg-surface-container-lowest p-lg rounded-xl border border-border card-shadow flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-lg">
+            <div class="flex items-center gap-3">
+                <div class="w-12 h-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                    <span class="material-symbols-outlined text-[28px]">timelapse</span>
+                </div>
+                <div>
+                    <h4 class="font-headline-sm text-base text-text-main font-semibold">Thống Kê & Phân Tích Thời Gian Chuyển Trạng Thái</h4>
+                    <p class="text-xs text-text-subtle mt-0.5">Theo dõi chi tiết thời gian hoàn thành từng giai đoạn (Lead Time theo giây), tỷ lệ rework và xu hướng chuyển đổi qua các tháng.</p>
+                </div>
+            </div>
+            <a href="transitions.html" class="flex items-center gap-2 px-4 py-2.5 rounded-lg text-xs font-semibold bg-primary text-white hover:bg-primary/90 transition-all shrink-0 shadow-xs">
+                <span>Xem thống kê thời gian</span>
+                <span class="material-symbols-outlined text-[16px]">arrow_forward</span>
+            </a>
+        </div>
+    </main>
+
+    <script src="js/i18n.js?v=4"></script>
+    <script src="js/app.js?v=7"></script>
+    <script src="js/sidebar.js?v=5"></script>
+    <script>
+        if (!Auth.isAuthenticated()) window.location.href = 'login.html';
+
+        let distributionChart = null;
+        let cachedChartProjects = [];
+
+        // Filter state
+        let currentScope = 'ALL';
+        let currentTimeRange = 'ALL_TIME';
+
+        // Chart Colors
+        const COLOR_TODO = '#94a3b8';         // Slate-400
+        const COLOR_PROGRESS = '#0052cc';     // Primary
+        const COLOR_DONE = '#36b37e';         // Success
+
+        function getChartThemeColors() {
+            const isDark = document.documentElement.classList.contains('dark');
+            return {
+                text: isDark ? '#94a3b8' : '#64748b',
+                grid: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.06)',
+                border: isDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.1)'
+            };
+        }
+
+        // =========================================================================
+        // FILTER EVENT HANDLERS
+        // =========================================================================
+
+        function onDashboardFilterChange() {
+            currentScope = document.getElementById('filterScopeSelect').value;
+            currentTimeRange = document.getElementById('filterTimeRangeSelect').value;
+
+            const btnReset = document.getElementById('btnResetFilters');
+            if (btnReset) {
+                if (currentScope !== 'ALL' || currentTimeRange !== 'ALL_TIME') {
+                    btnReset.classList.remove('hidden');
+                    btnReset.classList.add('inline-flex');
+                } else {
+                    btnReset.classList.add('hidden');
+                    btnReset.classList.remove('inline-flex');
+                }
+            }
+
+            loadDashboardSummary();
+        }
+
+        function resetDashboardFilters() {
+            document.getElementById('filterScopeSelect').value = 'ALL';
+            document.getElementById('filterTimeRangeSelect').value = 'ALL_TIME';
+            onDashboardFilterChange();
+        }
+
+        // =========================================================================
+        // 1. DASHBOARD TOP SUMMARY & BAR CHART
+        // =========================================================================
+
+        async function loadDashboardSummary() {
+            try {
+                const summary = await fetchApi(`/reports/dashboard-summary?scope=${encodeURIComponent(currentScope)}&timeRange=${encodeURIComponent(currentTimeRange)}`);
+                if (!summary) return;
+
+                document.getElementById('statTotalProjects').textContent = summary.totalProjects || 0;
+                document.getElementById('statTodo').textContent = summary.totalTodo || 0;
+                document.getElementById('statInProgress').textContent = (summary.totalInProgress || 0) + (summary.totalReview || 0);
+                document.getElementById('statDone').textContent = summary.totalDone || 0;
+
+                renderDistributionChart(summary.chartProjects || []);
+            } catch (err) {
+                console.error("Dashboard summary error:", err);
+            }
+        }
+
+        function renderDistributionChart(projects) {
+            cachedChartProjects = projects || [];
+            const canvas = document.getElementById('projectDistributionChart');
+            const emptyEl = document.getElementById('chartEmptyState');
+
+            if (!cachedChartProjects || cachedChartProjects.length === 0) {
+                if (distributionChart) {
+                    distributionChart.destroy();
+                    distributionChart = null;
+                }
+                canvas.style.display = 'none';
+                emptyEl.classList.remove('hidden');
+                return;
+            }
+
+            canvas.style.display = 'block';
+            emptyEl.classList.add('hidden');
+
+            const theme = getChartThemeColors();
+            const labels = cachedChartProjects.map(p => `[${p.projectKey}] ${p.projectName}`);
+
+            const dataTodo = cachedChartProjects.map(p => p.todoCount);
+            const dataProgress = cachedChartProjects.map(p => p.inProgressCount + p.reviewCount);
+            const dataDone = cachedChartProjects.map(p => p.doneCount);
+
+            if (distributionChart) {
+                distributionChart.destroy();
+            }
+
+            const ctx = canvas.getContext('2d');
+            distributionChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: (typeof I18n !== 'undefined' ? I18n.t('dashboard.chart.todo') : null) || 'To Do',
+                            data: dataTodo,
+                            backgroundColor: COLOR_TODO,
+                            borderRadius: 4,
+                            barPercentage: 0.8,
+                            categoryPercentage: 0.7
+                        },
+                        {
+                            label: (typeof I18n !== 'undefined' ? I18n.t('dashboard.chart.inProgress') : null) || 'In Progress',
+                            data: dataProgress,
+                            backgroundColor: COLOR_PROGRESS,
+                            borderRadius: 4,
+                            barPercentage: 0.8,
+                            categoryPercentage: 0.7
+                        },
+                        {
+                            label: (typeof I18n !== 'undefined' ? I18n.t('dashboard.chart.done') : null) || 'Done',
+                            data: dataDone,
+                            backgroundColor: COLOR_DONE,
+                            borderRadius: 4,
+                            barPercentage: 0.8,
+                            categoryPercentage: 0.7
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: { duration: 600 },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: document.documentElement.classList.contains('dark') ? '#1e293b' : '#0f172a',
+                            titleColor: '#ffffff',
+                            bodyColor: '#e2e8f0',
+                            padding: 12,
+                            cornerRadius: 8,
+                            boxPadding: 4,
+                            callbacks: {
+                                label: function(context) {
+                                    return ` ${context.dataset.label}: ${context.parsed.y} issues`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: { display: false },
+                            ticks: { color: theme.text, font: { family: 'Inter', size: 11, weight: '500' }, maxRotation: 25, minRotation: 0 }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            grid: { color: theme.grid },
+                            ticks: { color: theme.text, stepSize: 1, precision: 0, font: { family: 'Inter', size: 11 } }
+                        }
+                    }
+                }
+            });
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        // Lắng nghe sự kiện đổi ngôn ngữ để đồng bộ
+        function onLanguageChanged(lang) {
+            if (distributionChart) {
+                renderDistributionChart(cachedChartProjects);
+            }
+        }
+
+        // Theo dõi thay đổi class "dark" trên documentElement để cập nhật màu sắc biểu đồ
+        const themeObserver = new MutationObserver(function(mutations) {
+            mutations.forEach(function(mutation) {
+                if (mutation.attributeName === 'class' || mutation.attributeName === 'data-theme') {
+                    const theme = getChartThemeColors();
+                    if (distributionChart && cachedChartProjects.length > 0) {
+                        distributionChart.options.scales.x.ticks.color = theme.text;
+                        distributionChart.options.scales.y.ticks.color = theme.text;
+                        distributionChart.options.scales.y.grid.color = theme.grid;
+                        distributionChart.options.plugins.legend.labels.color = theme.text;
+                        distributionChart.update();
+                    }
+                }
+            });
+        });
+        themeObserver.observe(document.documentElement, { attributes: true });
+
+        document.addEventListener('DOMContentLoaded', () => {
+            loadDashboardSummary();
+        });
+    </script>
+</body>
+</html>

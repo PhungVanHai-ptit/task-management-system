@@ -1,0 +1,42 @@
+spring:
+  application:
+    name: task-management-system-test
+  profiles:
+    active: test
+
+  datasource:
+    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;MODE=MySQL
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    open-in-view: false
+    database-platform: org.hibernate.dialect.H2Dialect
+    show-sql: false
+
+  mail:
+    host: localhost
+    port: 25
+    username: test@example.com
+    password: testpassword
+
+  artemis:
+    mode: embedded
+    embedded:
+      enabled: true
+      persistent: false
+
+app:
+  jwt:
+    secret: mini-jira-intern-super-secret-key-must-be-at-least-256bits-long
+    expiration-ms: 86400000
+  jms:
+    notification-queue: notification.queue
+    email-verification-queue: email.verification.queue
+    password-reset-queue: password.reset.queue
+  scheduler:
+    deadline-reminder-hours: 24
+  base-url: http://localhost:8080

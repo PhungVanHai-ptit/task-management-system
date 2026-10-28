@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>Account Settings - Mini Jira</title>
+    <link rel="stylesheet" href="css/style.css" />
+    <script>
+        (function () {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            if (savedTheme === 'dark') {
+                document.documentElement.classList.add('dark');
+                document.documentElement.setAttribute('data-theme', 'dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+                document.documentElement.setAttribute('data-theme', 'light');
+            }
+        })();
+    </script>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
+        rel="stylesheet" />
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "background": "var(--bg-app)",
+                        "surface": "var(--surface-lowest)",
+                        "surface-container-lowest": "var(--surface-lowest)",
+                        "surface-container-low": "var(--surface-low)",
+                        "surface-container": "var(--surface-container)",
+                        "surface-container-high": "var(--surface-high)",
+                        "surface-container-highest": "var(--surface-highest)",
+                        "surface-variant": "var(--surface-variant)",
+                        "text-main": "var(--text-main)",
+                        "text-subtle": "var(--text-subtle)",
+                        "border": "var(--border-color)",
+                        "outline": "var(--outline)",
+                        "outline-variant": "var(--outline-variant)",
+                        "secondary-container": "var(--secondary-container)",
+                        "on-secondary-fixed": "var(--on-secondary-fixed)",
+                        "on-secondary-fixed-variant": "var(--on-secondary-fixed-variant)",
+                        "inverse-surface": "var(--surface-lowest)",
+                        "inverse-on-surface": "var(--text-main)",
+                        "on-background": "var(--text-main)",
+                        "on-surface": "var(--text-main)",
+
+                        "primary": "#0052CC",
+                        "primary-container": "#0747A6",
+                        "primary-fixed": "var(--primary-fixed)",
+                        "primary-fixed-dim": "var(--primary-fixed-dim)",
+                        "on-primary": "#ffffff",
+                        "surface-tint": "#0747A6",
+
+                        "success": "#36B37E",
+                        "warning": "#FFAB00",
+                        "danger": "#FF5630",
+                        "error": "#FF5630"
+                    },
+                    spacing: { "sidebar-width": "240px", "xs": "4px", "sm": "8px", "md": "16px", "lg": "24px", "xl": "48px" },
+                    fontFamily: {
+                        "headline-sm": ["Inter"], "label-sm": ["Inter"], "label-bold": ["Inter"], "display-lg": ["Inter"],
+                        "code": ["Inter"], "body-md": ["Inter"], "headline-md": ["Inter"], "body-lg": ["Inter"]
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: var(--bg-app);
+            color: var(--text-main);
+        }
+
+        .card-shadow {
+            box-shadow: var(--shadow-sm);
+            transition: box-shadow 0.2s ease-in-out;
+        }
+
+        .card-shadow:hover {
+            box-shadow: var(--shadow-md);
+        }
+
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 20;
+        }
+    </style>
+</head>
+
+<body class="font-body-md text-body-md antialiased overflow-x-hidden min-h-screen bg-background text-text-main">
+
+    <!-- Modular Sidebar -->
+    <div id="appSidebar"></div>
+
+    <!-- Main Content -->
+    <main class="ml-sidebar-width p-xl min-h-screen bg-background">
+        <div class="max-w-5xl">
+            <div class="mb-8">
+                <h2 class="font-display-lg text-display-lg text-text-main" data-i18n="settings.title">Account Settings
+                </h2>
+                <p class="font-body-md text-body-md text-text-subtle mt-1" data-i18n="settings.subtitle">Manage your
+                    personal profile and security preferences.</p>
+            </div>
+
+            <div id="settingsGlobalAlert" class="hidden mb-6 p-4 rounded-xl text-sm font-medium animate-fade-in"></div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
+                <!-- Left Column: Profile Card -->
+                <div class="md:col-span-1">
+                    <div
+                        class="bg-surface-container-lowest border border-border rounded-xl p-6 card-shadow text-center">
+                        <div class="relative w-24 h-24 mx-auto mb-3">
+                            <div class="w-24 h-24 rounded-full bg-primary text-white flex items-center justify-center font-bold text-3xl shadow-md border-4 border-surface-container-low overflow-hidden"
+                                id="profileLargeAvatar">
+                                U
+                            </div>
+                            <span
+                                class="absolute bottom-1 right-1 w-5 h-5 bg-success rounded-full border-2 border-surface-container-lowest"
+                                title="Active"></span>
+                        </div>
+
+                        <!-- Avatar Upload Controls -->
+                        <input type="file" id="avatarFileInput" accept="image/jpeg,image/png,image/webp,image/gif"
+                            class="hidden" onchange="uploadAvatarFile(this)">
+                        <div class="flex items-center justify-center gap-2 mb-4">
+                            <button type="button" onclick="document.getElementById('avatarFileInput').click()"
+                                class="text-xs px-3 py-1.5 bg-primary/10 text-primary hover:bg-primary hover:text-white rounded-lg font-medium transition-all cursor-pointer inline-flex items-center gap-1.5 active:scale-95 shadow-xs">
+                                <span class="material-symbols-outlined text-[15px]">photo_camera</span>
+                                <span data-i18n="settings.avatar.change">Thay avatar</span>
+                            </button>
+                            <button type="button" id="btnDeleteAvatar" onclick="deleteAvatarFile()"
+                                class="hidden text-xs px-2.5 py-1.5 bg-danger/10 text-danger hover:bg-danger hover:text-white rounded-lg font-medium transition-all cursor-pointer inline-flex items-center gap-1 active:scale-95 shadow-xs"
+                                title="Xóa avatar">
+                                <span class="material-symbols-outlined text-[15px]">delete</span>
+                            </button>
+                        </div>
+
+                        <div class="flex items-center justify-center gap-1.5 mb-1 group">
+                            <h3 class="font-headline-sm text-text-main" id="profileName">Loading...</h3>
+                            <button type="button" onclick="openEditNameModal()"
+                                class="text-text-subtle hover:text-primary transition-all p-1 rounded-md hover:bg-surface-container-high active:scale-95 cursor-pointer"
+                                title="Đổi tên" id="btnEditNameIcon">
+                                <span class="material-symbols-outlined text-[18px]">edit</span>
+                            </button>
+                        </div>
+                        <p class="text-text-subtle text-sm mb-3" id="profileEmail">user@example.com</p>
+
+                        <div class="flex items-center justify-center gap-2 mb-4">
+                            <span
+                                class="px-3 py-1 bg-primary/10 text-primary text-xs font-semibold rounded-full uppercase"
+                                id="profileRole">USER</span>
+                            <span class="px-3 py-1 bg-success/10 text-success text-xs font-semibold rounded-full"
+                                data-i18n="settings.profile.active">Active</span>
+                        </div>
+
+                        <div class="border-t border-border pt-4 text-left text-xs text-text-subtle space-y-2">
+                            <div class="flex justify-between">
+                                <span data-i18n="settings.profile.userId">User ID:</span>
+                                <span class="font-mono text-text-main font-medium" id="profileId">-</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span data-i18n="settings.profile.joined">Joined on:</span>
+                                <span class="text-text-main font-medium" id="profileCreatedAt">-</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Column: Security & Password Change -->
+                <div class="md:col-span-2 space-y-6">
+                    <!-- Change Password Form -->
+                    <div class="bg-surface-container-lowest border border-border rounded-xl p-6 card-shadow">
+                        <div class="flex items-center justify-between pb-4 mb-6 border-b border-border">
+                            <div>
+                                <h3 class="font-headline-sm text-[18px] text-text-main flex items-center gap-2">
+                                    <span class="material-symbols-outlined text-primary">lock_reset</span>
+                                    <span data-i18n="settings.security.title">Change Password</span>
+                                </h3>
+                                <p class="text-xs text-text-subtle mt-1" data-i18n="settings.security.subtitle">Ensure
+                                    your account uses a secure, long password.</p>
+                            </div>
+                        </div>
+
+                        <!-- Alerts -->
+                        <div id="passwordAlert" class="hidden mb-4 p-3 rounded-lg text-sm"></div>
+
+                        <form id="changePasswordForm" class="space-y-4">
+                            <div>
+                                <label class="block font-label-bold text-text-subtle text-xs mb-1.5"
+                                    for="currentPassword">
+                                    <span data-i18n="settings.security.oldPassword">Current Password</span> <span
+                                        class="text-danger">*</span>
+                                </label>
+                                <div class="password-input-wrapper">
+                                    <input type="password" id="currentPassword" required
+                                        class="w-full border border-border rounded-lg px-3 py-2 bg-surface-container-low text-text-main focus:outline-none focus:border-primary text-sm"
+                                        placeholder="••••••••" />
+                                    <button type="button" class="password-toggle-btn"
+                                        onclick="togglePasswordVisibility('currentPassword', this)"
+                                        title="Show password" tabindex="-1">
+                                        <span class="material-symbols-outlined text-[20px]">visibility</span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="block font-label-bold text-text-subtle text-xs mb-1.5" for="newPassword">
+                                    <span data-i18n="settings.security.newPassword">New Password</span> <span
+                                        class="text-danger">*</span>
+                                </label>
+                                <div class="password-input-wrapper">
+                                    <input type="password" id="newPassword" required minlength="6"
+                                        class="w-full border border-border rounded-lg px-3 py-2 bg-surface-container-low text-text-main focus:outline-none focus:border-primary text-sm"
+                                        placeholder="••••••••" />
+                                    <button type="button" class="password-toggle-btn"
+                                        onclick="togglePasswordVisibility('newPassword', this)" title="Show password"
+                                        tabindex="-1">
+                                        <span class="material-symbols-outlined text-[20px]">visibility</span>
+                                    </button>
+                                </div>
+                                <p class="text-[11px] text-text-subtle mt-1"
+                                    data-i18n="settings.security.minLengthNotice">Password must be at least 6 characters
+                                    long.</p>
+                            </div>
+
+                            <div>
+                                <label class="block font-label-bold text-text-subtle text-xs mb-1.5"
+                                    for="confirmPassword">
+                                    <span data-i18n="settings.security.confirmPassword">Confirm New Password</span>
+                                    <span class="text-danger">*</span>
+                                </label>
+                                <div class="password-input-wrapper">
+                                    <input type="password" id="confirmPassword" required minlength="6"
+                                        class="w-full border border-border rounded-lg px-3 py-2 bg-surface-container-low text-text-main focus:outline-none focus:border-primary text-sm"
+                                        placeholder="••••••••" />
+                                    <button type="button" class="password-toggle-btn"
+                                        onclick="togglePasswordVisibility('confirmPassword', this)"
+                                        title="Show password" tabindex="-1">
+                                        <span class="material-symbols-outlined text-[20px]">visibility</span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="pt-2 flex justify-end">
+                                <button type="submit" id="btnChangePassword"
+                                    class="bg-primary hover:bg-surface-tint text-on-primary font-label-bold text-sm py-2 px-6 rounded-lg transition-all shadow-sm flex items-center gap-2 cursor-pointer">
+                                    <span class="material-symbols-outlined text-[18px]">check_circle</span>
+                                    <span data-i18n="settings.security.saveBtn">Update Password</span>
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Email Notification Settings Card -->
+                    <div class="bg-surface-container-lowest border border-border rounded-xl p-6 card-shadow">
+                        <div class="flex items-center justify-between pb-4 mb-5 border-b border-border">
+                            <div>
+                                <h3 class="font-headline-sm text-[18px] text-text-main flex items-center gap-2">
+                                    <span class="material-symbols-outlined text-primary">mail</span>
+                                    <span data-i18n="settings.notification.title">Cài Đặt Thông Báo Qua Email</span>
+                                </h3>
+                                <p class="text-xs text-text-subtle mt-1" data-i18n="settings.notification.subtitle">
+                                    Quản lý việc nhận email thông báo công việc từ hệ thống.
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- Toggle Row -->
+                        <div class="flex items-center justify-between gap-4 p-4 rounded-xl bg-surface-container-low/50 border border-border/60 transition-colors">
+                            <div class="flex-1 pr-2">
+                                <label for="toggleTaskEmails" class="font-semibold text-sm text-text-main cursor-pointer flex items-center gap-2 select-none">
+                                    <span data-i18n="settings.notification.enableLabel">Bật thông báo công việc qua email</span>
+                                    <span id="emailNotificationBadge" class="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-success/15 text-success border border-success/25" data-i18n="settings.notification.statusEnabled">
+                                        Đang bật
+                                    </span>
+                                </label>
+                                <p class="text-xs text-text-subtle mt-1 leading-relaxed select-none" data-i18n="settings.notification.enableDesc">
+                                    Khi bật, bạn sẽ nhận được email khi được giao việc mới hoặc nhắc nhở deadline.
+                                </p>
+                            </div>
+
+                            <!-- Modern Switch -->
+                            <label class="relative inline-flex items-center cursor-pointer shrink-0">
+                                <input type="checkbox" id="toggleTaskEmails" class="sr-only peer" onchange="updateNotificationSetting(this)">
+                                <div class="w-11 h-6 bg-surface-container-highest peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-border after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                            </label>
+                        </div>
+
+                        <!-- Security Notice Box -->
+                        <div class="mt-4 flex items-center gap-2.5 px-3.5 py-2.5 rounded-lg bg-primary/5 border border-primary/15 text-text-subtle text-xs">
+                            <span class="material-symbols-outlined text-primary text-[18px] shrink-0">shield</span>
+                            <span data-i18n="settings.notification.securityNotice">
+                                Email bảo mật (quên mật khẩu, kích hoạt tài khoản) vẫn luôn được gửi.
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Edit Name Modal -->
+        <div id="editNameModal" class="fixed inset-0 bg-black/60 hidden flex items-center justify-center z-50 p-4">
+            <div
+                class="bg-surface-container-lowest border border-border rounded-xl max-w-md w-full p-6 shadow-2xl relative animate-fade-in">
+                <button type="button" onclick="closeEditNameModal()"
+                    class="absolute top-4 right-4 text-text-subtle hover:text-text-main cursor-pointer">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+                <div class="flex items-center gap-2 mb-2">
+                    <span class="material-symbols-outlined text-primary text-[24px]">manage_accounts</span>
+                    <h3 class="font-headline-sm text-text-main text-lg" data-i18n="settings.name.title">Đổi Tên Người
+                        Dùng</h3>
+                </div>
+                <p class="text-xs text-text-subtle mb-4" data-i18n="settings.name.subtitle">Cập nhật họ và tên hiển thị
+                    trong toàn bộ hệ thống.</p>
+
+                <div id="editNameAlert" class="hidden mb-4 p-3 rounded-lg text-sm"></div>
+
+                <form id="editNameForm">
+                    <div class="mb-5">
+                        <label class="block font-label-bold text-text-subtle text-xs mb-1.5" for="editFullNameInput">
+                            <span data-i18n="settings.name.inputLabel">Họ và tên mới</span> <span
+                                class="text-danger">*</span>
+                        </label>
+                        <input type="text" id="editFullNameInput" required maxlength="100"
+                            class="w-full border border-border rounded-lg px-3 py-2 bg-surface-container-low text-text-main focus:outline-none focus:border-primary text-sm"
+                            placeholder="Nhập họ và tên..." data-i18n="settings.name.placeholder" />
+                    </div>
+                    <div class="flex justify-end gap-3 pt-2">
+                        <button type="button" onclick="closeEditNameModal()"
+                            class="px-4 py-2 text-text-main hover:bg-surface-container-low rounded-lg transition-colors font-label-bold text-sm cursor-pointer"
+                            data-i18n="settings.name.cancel">Hủy</button>
+                        <button type="submit" id="btnSaveName"
+                            class="px-5 py-2 bg-primary text-white rounded-lg hover:bg-surface-tint transition-colors font-label-bold text-sm shadow-sm cursor-pointer flex items-center gap-1.5">
+                            <span class="material-symbols-outlined text-[16px]">check</span>
+                            <span data-i18n="settings.name.saveBtn">Lưu Thay Đổi</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </main>
+
+    <script src="js/i18n.js?v=4"></script>
+    <script src="js/app.js?v=7"></script>
+    <script src="js/sidebar.js?v=5"></script>
+    <script>
+        if (!Auth.isAuthenticated()) {
+            window.location.href = 'login.html';
+        }
+
+        async function loadProfile() {
+            try {
+                const user = await fetchApi('/auth/me');
+                if (user) {
+                    const initials = (user.fullName || user.email || 'U').substring(0, 2).toUpperCase();
+                    const largeAvatar = document.getElementById('profileLargeAvatar');
+                    const btnDelete = document.getElementById('btnDeleteAvatar');
+
+                    if (user.avatarUrl) {
+                        largeAvatar.innerHTML = `<img src="${user.avatarUrl}" class="w-full h-full rounded-full object-cover" alt="avatar" />`;
+                        largeAvatar.classList.remove('bg-primary');
+                        if (btnDelete) btnDelete.classList.remove('hidden');
+                    } else {
+                        largeAvatar.textContent = initials;
+                        largeAvatar.classList.add('bg-primary');
+                        if (btnDelete) btnDelete.classList.add('hidden');
+                    }
+
+                    document.getElementById('profileName').textContent = user.fullName;
+                    document.getElementById('profileEmail').textContent = user.email;
+                    document.getElementById('profileRole').textContent = user.role || 'USER';
+                    document.getElementById('profileId').textContent = '#' + user.id;
+                    if (user.createdAt) {
+                        const date = new Date(user.createdAt);
+                        document.getElementById('profileCreatedAt').textContent = date.toLocaleDateString();
+                    }
+
+                    // Đồng bộ trạng thái thông báo email (khi bật switch là BẬT thông báo)
+                    const isNotificationEnabled = !user.muteTaskEmails;
+                    const toggleInput = document.getElementById('toggleTaskEmails') || document.getElementById('toggleMuteTaskEmails');
+                    if (toggleInput) {
+                        toggleInput.checked = isNotificationEnabled;
+                    }
+                    updateNotificationBadge(isNotificationEnabled);
+
+                    // Đồng bộ sidebar
+                    if (typeof syncCurrentUser === 'function') {
+                        syncCurrentUser();
+                    }
+                }
+            } catch (err) {
+                console.error("Failed to load user profile:", err);
+            }
+        }
+
+        function updateNotificationBadge(isEnabled) {
+            const badge = document.getElementById('emailNotificationBadge') || document.getElementById('muteEmailsBadge');
+            if (!badge) return;
+            badge.classList.remove('hidden');
+            if (isEnabled) {
+                badge.className = 'text-[10px] font-semibold px-2 py-0.5 rounded-full bg-success/15 text-success border border-success/25';
+                badge.textContent = (typeof I18n !== 'undefined' && I18n.t) ? (I18n.t('settings.notification.statusEnabled') || 'Đang bật') : 'Đang bật';
+            } else {
+                badge.className = 'text-[10px] font-semibold px-2 py-0.5 rounded-full bg-warning/15 text-warning border border-warning/25';
+                badge.textContent = (typeof I18n !== 'undefined' && I18n.t) ? (I18n.t('settings.notification.statusDisabled') || 'Đang tắt') : 'Đang tắt';
+            }
+        }
+
+        async function updateNotificationSetting(checkbox) {
+            const isEnabled = checkbox.checked;
+            updateNotificationBadge(isEnabled);
+            checkbox.disabled = true;
+
+            try {
+                // Bật thông báo -> muteTaskEmails = false; Tắt thông báo -> muteTaskEmails = true
+                await fetchApi('/auth/me/notification-settings', {
+                    method: 'PATCH',
+                    body: JSON.stringify({ muteTaskEmails: !isEnabled })
+                });
+
+                showGlobalAlert((typeof I18n !== 'undefined' && I18n.t) ? (I18n.t('settings.notification.updated') || 'Cập nhật cài đặt thông báo thành công!') : 'Cập nhật cài đặt thông báo thành công!', true);
+            } catch (err) {
+                // Hoàn tác toggle nếu có lỗi
+                checkbox.checked = !isEnabled;
+                updateNotificationBadge(!isEnabled);
+                showGlobalAlert(err.message || ((typeof I18n !== 'undefined' && I18n.t) ? I18n.t('settings.notification.failed') : 'Không thể cập nhật cài đặt thông báo'), false);
+            } finally {
+                checkbox.disabled = false;
+            }
+        }
+
+        // Tương thích ngược nếu còn lời gọi cũ
+        window.updateMuteNotificationSetting = updateNotificationSetting;
+
+        function onLanguageChanged() {
+            const toggleInput = document.getElementById('toggleTaskEmails') || document.getElementById('toggleMuteTaskEmails');
+            if (toggleInput) {
+                updateNotificationBadge(toggleInput.checked);
+            }
+        }
+
+        async function uploadAvatarFile(input) {
+            const file = input.files && input.files[0];
+            if (!file) return;
+
+            // Validate client-side
+            if (!file.type.startsWith('image/')) {
+                alert('Vui lòng chọn file hình ảnh (JPEG, PNG, WebP, GIF)');
+                input.value = '';
+                return;
+            }
+            if (file.size > 10 * 1024 * 1024) {
+                alert('Dung lượng ảnh tối đa 10 MB');
+                input.value = '';
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                await fetchApi('/auth/me/avatar', {
+                    method: 'POST',
+                    body: formData
+                });
+                input.value = '';
+                await loadProfile();
+            } catch (err) {
+                alert(err.message || 'Không thể tải lên ảnh đại diện');
+                input.value = '';
+            }
+        }
+
+        async function deleteAvatarFile() {
+            if (!confirm('Bạn có chắc chắn muốn xóa ảnh đại diện không?')) return;
+            try {
+                await fetchApi('/auth/me/avatar', {
+                    method: 'DELETE'
+                });
+                await loadProfile();
+            } catch (err) {
+                alert(err.message || 'Không thể xóa ảnh đại diện');
+            }
+        }
+
+        // Change Password Form Handling
+        document.getElementById('changePasswordForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const alertBox = document.getElementById('passwordAlert');
+            alertBox.className = 'hidden mb-4 p-3 rounded-lg text-sm';
+
+            const currentPassword = document.getElementById('currentPassword').value;
+            const newPassword = document.getElementById('newPassword').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+
+            if (newPassword !== confirmPassword) {
+                alertBox.className = 'mb-4 p-3 rounded-lg text-sm bg-danger/10 text-danger border border-danger/20 block';
+                alertBox.textContent = I18n.t('settings.alert.mismatch');
+                return;
+            }
+
+            const btn = document.getElementById('btnChangePassword');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="material-symbols-outlined animate-spin text-[18px]">progress_activity</span>';
+
+            try {
+                const res = await fetchApi('/auth/change-password', {
+                    method: 'POST',
+                    body: JSON.stringify({ currentPassword, newPassword })
+                });
+
+                // Cập nhật ngay token mới được cấp riêng cho phiên hiện tại
+                if (res && res.accessToken) {
+                    Auth.setToken(res.accessToken);
+                    if (res.refreshToken) {
+                        Auth.setRefreshToken(res.refreshToken);
+                    }
+                }
+
+                alertBox.className = 'mb-4 p-3 rounded-lg text-sm bg-success/10 text-success border border-success/20 block';
+                const successMsg = I18n.t('settings.alert.success');
+                const extraMsg = (localStorage.getItem('app_lang') === 'vi') 
+                    ? ' (Tất cả thiết bị khác đã được đăng xuất an toàn)' 
+                    : ' (All other devices have been logged out)';
+                alertBox.textContent = successMsg + extraMsg;
+                document.getElementById('changePasswordForm').reset();
+            } catch (err) {
+                alertBox.className = 'mb-4 p-3 rounded-lg text-sm bg-danger/10 text-danger border border-danger/20 block';
+                alertBox.textContent = err.message || I18n.t('settings.alert.fail');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = `<span class="material-symbols-outlined text-[18px]">check_circle</span> <span data-i18n="settings.security.saveBtn">${I18n.t('settings.security.saveBtn')}</span>`;
+            }
+        });
+
+        // ================= Change Name Handling =================
+        function showGlobalAlert(msg, isSuccess = true) {
+            const alertBox = document.getElementById('settingsGlobalAlert');
+            if (!alertBox) return;
+            alertBox.className = isSuccess
+                ? 'mb-6 p-4 rounded-xl text-sm font-medium bg-success/10 text-success border border-success/20 block animate-fade-in flex items-center gap-2'
+                : 'mb-6 p-4 rounded-xl text-sm font-medium bg-danger/10 text-danger border border-danger/20 block animate-fade-in flex items-center gap-2';
+            alertBox.innerHTML = `
+                <span class="material-symbols-outlined text-[20px]">${isSuccess ? 'check_circle' : 'error'}</span>
+                <span>${msg}</span>
+            `;
+            setTimeout(() => { alertBox.className = 'hidden'; }, 4000);
+        }
+
+        function openEditNameModal() {
+            const currentName = document.getElementById('profileName').textContent;
+            document.getElementById('editFullNameInput').value = (currentName && currentName !== 'Loading...') ? currentName : '';
+            const alertBox = document.getElementById('editNameAlert');
+            alertBox.className = 'hidden mb-4 p-3 rounded-lg text-sm';
+            document.getElementById('editNameModal').classList.remove('hidden');
+            setTimeout(() => document.getElementById('editFullNameInput').focus(), 50);
+        }
+
+        function closeEditNameModal() {
+            document.getElementById('editNameModal').classList.add('hidden');
+        }
+
+        document.getElementById('editNameForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const fullName = document.getElementById('editFullNameInput').value.trim();
+            const alertBox = document.getElementById('editNameAlert');
+            alertBox.className = 'hidden mb-4 p-3 rounded-lg text-sm';
+
+            if (!fullName) {
+                alertBox.className = 'mb-4 p-3 rounded-lg text-sm bg-danger/10 text-danger border border-danger/20 block';
+                alertBox.textContent = 'Họ và tên không được để trống';
+                return;
+            }
+
+            const btn = document.getElementById('btnSaveName');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="material-symbols-outlined animate-spin text-[16px]">progress_activity</span>';
+
+            try {
+                const updatedUser = await fetchApi('/auth/me', {
+                    method: 'PUT',
+                    body: JSON.stringify({ fullName })
+                });
+
+                if (updatedUser) {
+                    Auth.setUser(updatedUser);
+                    document.getElementById('profileName').textContent = updatedUser.fullName;
+
+                    // Update avatar initials if no avatar image
+                    if (!updatedUser.avatarUrl) {
+                        const initials = (updatedUser.fullName || updatedUser.email || 'U').substring(0, 2).toUpperCase();
+                        document.getElementById('profileLargeAvatar').textContent = initials;
+                    }
+
+                    if (typeof syncCurrentUser === 'function') {
+                        syncCurrentUser();
+                    }
+                }
+
+                closeEditNameModal();
+                showGlobalAlert(I18n.t('settings.name.success'), true);
+            } catch (err) {
+                alertBox.className = 'mb-4 p-3 rounded-lg text-sm bg-danger/10 text-danger border border-danger/20 block';
+                alertBox.textContent = err.message || 'Không thể cập nhật tên người dùng';
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = `<span class="material-symbols-outlined text-[16px]">check</span> <span data-i18n="settings.name.saveBtn">${I18n.t('settings.name.saveBtn')}</span>`;
+            }
+        });
+
+        loadProfile();
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,2348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>Issue Details - Mini Jira</title>
+    <link rel="stylesheet" href="css/style.css"/>
+    <script>
+        (function() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            if (savedTheme === 'dark') {
+                document.documentElement.classList.add('dark');
+                document.documentElement.setAttribute('data-theme', 'dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+                document.documentElement.setAttribute('data-theme', 'light');
+            }
+        })();
+    </script>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "background": "var(--bg-app)",
+                        "surface": "var(--surface-lowest)",
+                        "surface-container-lowest": "var(--surface-lowest)",
+                        "surface-container-low": "var(--surface-low)",
+                        "surface-container": "var(--surface-container)",
+                        "surface-container-high": "var(--surface-high)",
+                        "surface-container-highest": "var(--surface-highest)",
+                        "surface-variant": "var(--surface-variant)",
+                        "text-main": "var(--text-main)",
+                        "text-subtle": "var(--text-subtle)",
+                        "border": "var(--border-color)",
+                        "outline": "var(--outline)",
+                        "outline-variant": "var(--outline-variant)",
+                        "secondary-container": "var(--secondary-container)",
+                        "on-secondary-fixed": "var(--on-secondary-fixed)",
+                        "on-secondary-fixed-variant": "var(--on-secondary-fixed-variant)",
+                        "inverse-surface": "var(--surface-lowest)",
+                        "inverse-on-surface": "var(--text-main)",
+                        "on-background": "var(--text-main)",
+                        "on-surface": "var(--text-main)",
+                        
+                        "primary": "#0052CC",
+                        "primary-container": "#0747A6",
+                        "primary-fixed": "var(--primary-fixed)",
+                        "primary-fixed-dim": "var(--primary-fixed-dim)",
+                        "on-primary": "#ffffff",
+                        "surface-tint": "#0747A6",
+                        
+                        "success": "#36B37E",
+                        "warning": "#FFAB00",
+                        "danger": "#FF5630",
+                        "error": "#FF5630"
+                    },
+                    spacing: { "sidebar-width": "240px", "xs": "4px", "sm": "8px", "md": "16px", "lg": "24px", "xl": "48px" },
+                    fontFamily: {
+                        "headline-sm": ["Inter"], "label-sm": ["Inter"], "label-bold": ["Inter"], "display-lg": ["Inter"],
+                        "code": ["Inter"], "body-md": ["Inter"], "headline-md": ["Inter"], "body-lg": ["Inter"]
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { background-color: var(--bg-app); color: var(--text-main); }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 20; }
+        .material-symbols-outlined.fill { font-variation-settings: 'FILL' 1; }
+    </style>
+</head>
+<body class="bg-background text-text-main font-body-md antialiased overflow-x-hidden flex h-screen">
+
+    <!-- Modular Sidebar -->
+    <div id="appSidebar"></div>
+
+    <div id="mainLayoutWrapper" class="flex-1 flex flex-col ml-sidebar-width min-w-0 h-screen overflow-hidden relative">
+        <!-- Guest Topbar (chỉ hiện khi xem công khai hoặc chưa đăng nhập) -->
+        <div id="guestTopBar" class="hidden bg-surface-container border-b border-border px-6 py-2.5 flex items-center justify-between text-xs shrink-0">
+            <div class="flex items-center gap-2 text-text-main font-medium">
+                <span class="material-symbols-outlined text-[18px] text-primary">public</span>
+                <span data-i18n="issueDetail.guestBanner">Bạn đang xem công việc này ở chế độ công khai (Chỉ đọc).</span>
+            </div>
+            <div class="flex items-center gap-3">
+                <div class="relative inline-flex items-center">
+                    <select class="lang-select appearance-none pl-6 pr-6 py-1 bg-surface border border-border rounded-md text-xs font-medium text-text-main hover:border-primary focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer transition-colors" onchange="I18n.setLanguage(this.value)">
+                        <option value="vi">Tiếng Việt</option>
+                        <option value="en">English</option>
+                    </select>
+                    <span class="material-symbols-outlined absolute left-1.5 pointer-events-none text-[14px] text-text-subtle">language</span>
+                </div>
+                <a href="login.html" class="px-3 py-1 bg-primary text-white rounded-md font-semibold hover:bg-opacity-90 transition-colors inline-flex items-center gap-1 shadow-xs">
+                    <span class="material-symbols-outlined text-[14px]">login</span>
+                    <span data-i18n="issueDetail.loginToApp">Đăng Nhập</span>
+                </a>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <main class="flex-1 overflow-y-auto p-6">
+            <div class="max-w-6xl mx-auto flex gap-6">
+                <!-- Left Column (Main Info) -->
+                <div class="flex-1 flex flex-col gap-6">
+                    <!-- Breadcrumbs -->
+                    <nav class="flex items-center gap-2 text-text-subtle text-sm">
+                        <a href="projects.html" class="hover:text-primary" data-i18n="issueDetail.breadcrumbs.projects">Projects</a>
+                        <span class="material-symbols-outlined text-[14px]">chevron_right</span>
+                        <a href="#" id="breadcrumbProjectName" class="hover:text-primary">Project</a>
+                        <span class="material-symbols-outlined text-[14px]">chevron_right</span>
+                        <span id="breadcrumbIssueKey" class="text-text-main font-medium">IS-XX</span>
+                    </nav>
+
+                    <div class="flex items-start justify-between gap-4">
+                        <div class="flex-1">
+                            <h1 id="issueTitle" class="font-display text-2xl font-semibold text-text-main">Loading...</h1>
+                        </div>
+                        <div class="flex items-center gap-2 shrink-0" id="issueActionsContainer">
+                            <button id="btnStatusHistory" onclick="openStatusHistoryModal()" class="px-3 py-1.5 rounded-lg border border-border bg-surface-container-low hover:bg-surface-container-high text-xs font-semibold text-text-main flex items-center gap-1.5 transition-colors cursor-pointer hidden" title="Xem lịch sử chuyển trạng thái">
+                                <span class="material-symbols-outlined text-[16px] text-primary">history</span>
+                                <span>Changelog</span>
+                            </button>
+                            <button id="btnShareIssue" onclick="openShareModal()" class="px-3 py-1.5 rounded-lg border border-border bg-surface-container-low hover:bg-surface-container-high text-xs font-semibold text-text-main flex items-center gap-1.5 transition-colors cursor-pointer hidden" title="Chia sẻ công việc">
+                                <span class="material-symbols-outlined text-[16px] text-primary">share</span>
+                                <span data-i18n="issueDetail.share">Chia sẻ</span>
+                            </button>
+                            <button id="btnEditIssue" onclick="openEditModal()" class="px-3 py-1.5 rounded-lg border border-border bg-surface-container-low hover:bg-surface-container-high text-xs font-semibold text-text-main flex items-center gap-1.5 transition-colors cursor-pointer hidden">
+                                <span class="material-symbols-outlined text-[16px] text-primary">edit</span>
+                                <span>Chỉnh sửa</span>
+                            </button>
+                            <button id="btnDeleteIssue" onclick="deleteCurrentIssue()" class="px-3 py-1.5 rounded-lg border border-danger/30 bg-danger/10 hover:bg-danger/20 text-xs font-semibold text-danger flex items-center gap-1.5 transition-colors cursor-pointer hidden">
+                                <span class="material-symbols-outlined text-[16px]">delete</span>
+                                <span>Xóa</span>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="flex flex-col gap-2">
+                        <h3 class="font-medium text-text-main text-sm" data-i18n="issueDetail.description">Description</h3>
+                        <div id="issueDescription" class="bg-surface-container-lowest p-4 border border-border rounded-lg text-sm text-text-main whitespace-pre-wrap min-h-[100px]"></div>
+                    </div>
+
+                    <!-- Issue Attachments Gallery -->
+                    <div class="flex flex-col gap-3 mt-6 pt-6 border-t border-border">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-2">
+                                <h3 class="font-medium text-text-main text-sm flex items-center gap-1.5">
+                                    <span class="material-symbols-outlined text-[18px] text-primary">image</span>
+                                    <span data-i18n="issueDetail.attachments">Ảnh đính kèm</span>
+                                    <span id="issueImageCount" class="text-xs bg-surface-container-high px-2 py-0.5 rounded-full text-text-subtle font-mono">0</span>
+                                </h3>
+                            </div>
+                        </div>
+                        <!-- Image Gallery Grid -->
+                        <div id="issueImagesGallery" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                            <!-- Rendered by JS -->
+                        </div>
+                    </div>
+
+                    <!-- Comments Section -->
+                    <div class="mt-8 pt-6 border-t border-border">
+                        <h3 class="font-medium text-text-main text-sm mb-4" data-i18n="issueDetail.comments">Comments</h3>
+                        
+                        <!-- Guest Comment Notice -->
+                        <div id="guestCommentNotice" class="hidden text-xs text-text-subtle italic bg-surface-container-low p-3 rounded-lg border border-border mb-4 flex items-center gap-2">
+                            <span class="material-symbols-outlined text-[16px] text-primary">info</span>
+                            <span>Chế độ xem công khai: Bình luận ở trạng thái chỉ đọc. Hãy đăng nhập để tham gia thảo luận.</span>
+                        </div>
+
+                        <!-- Add Comment -->
+                        <div class="flex gap-3 mb-6" id="addCommentContainer">
+                            <div class="w-8 h-8 rounded-full bg-surface-container-high flex-shrink-0 flex items-center justify-center text-text-subtle font-bold text-xs" id="currentUserCommentAvatar">U</div>
+                            <div class="flex-1">
+                                <textarea id="commentInput" class="w-full bg-surface-container-lowest border border-border rounded-lg p-3 text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary min-h-[80px]" data-i18n="issueDetail.addComment" placeholder="Add a comment..."></textarea>
+                                <div id="commentErrorMsg" class="hidden text-xs text-danger mt-1.5 font-medium flex items-center gap-1.5">
+                                    <span class="material-symbols-outlined text-[15px]">error</span>
+                                    <span id="commentErrorText"></span>
+                                </div>
+                                <div class="mt-2 flex justify-between items-center">
+                                    <div>
+                                        <input type="file" id="commentImageInput" multiple accept="image/jpeg,image/png,image/webp,image/gif" class="hidden" onchange="onCommentFilesSelected(this)">
+                                        <button type="button" onclick="document.getElementById('commentImageInput').click()" class="text-xs px-2.5 py-1.5 text-text-subtle hover:text-primary hover:bg-surface-container rounded-lg font-medium transition-all cursor-pointer inline-flex items-center gap-1 active:scale-95">
+                                            <span class="material-symbols-outlined text-[16px]">attach_file</span>
+                                            <span id="commentSelectedFilesText">Attach image</span>
+                                        </button>
+                                    </div>
+                                    <button onclick="addComment()" class="bg-primary hover:bg-opacity-90 text-white text-sm font-medium py-1.5 px-4 rounded-md transition-colors disabled:opacity-50 cursor-pointer shadow-sm" id="btnSaveComment" data-i18n="issueDetail.saveComment">Save</button>
+                                </div>
+                                <div id="commentImagePreviewList" class="flex flex-wrap gap-2 mt-2"></div>
+                            </div>
+                        </div>
+
+                        <!-- Comments List -->
+                        <div id="commentsList" class="flex flex-col gap-4">
+                            <!-- Comments injected by JS -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Column (Sidebar Details) - Read-only Information Card -->
+                <div class="w-[300px] flex-shrink-0 flex flex-col gap-6">
+                    <div class="bg-surface-container-lowest p-5 rounded-xl border border-border shadow-sm flex flex-col gap-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-text-subtle uppercase tracking-wider mb-1.5">Quyền riêng tư</label>
+                            <div id="issueVisibilityBadge" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-surface-container-low text-text-subtle border border-border w-fit">
+                                <span class="material-symbols-outlined text-[16px]">lock</span>
+                                <span>Riêng tư</span>
+                            </div>
+                        </div>
+
+                        <div>
+                            <div class="flex items-center justify-between mb-1.5">
+                                <label class="block text-xs font-semibold text-text-subtle uppercase tracking-wider" data-i18n="issueDetail.status">Trạng thái</label>
+                                <span id="statusRoleNotice" class="text-[10px] text-text-subtle hidden font-normal"></span>
+                            </div>
+                            <div class="flex flex-col gap-2">
+                                <div id="statusBadge" class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold bg-surface-container-low text-text-subtle border border-border w-fit">
+                                    <span class="w-2 h-2 rounded-full bg-text-subtle" id="statusDot"></span>
+                                    <span id="statusText">-</span>
+                                </div>
+                                <div id="quickStatusContainer" class="hidden">
+                                    <select id="quickStatusSelect" onchange="updateStatus(this.value)" class="w-full text-xs bg-surface-container-low border border-border rounded-lg px-2.5 py-2 font-medium text-text-main focus:ring-2 focus:ring-primary focus:outline-none cursor-pointer">
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Thời gian chuyển trạng thái (Status Transition Times) -->
+                        <div class="pt-2 border-t border-border/50">
+                            <div class="mb-2">
+                                <label class="block text-xs font-semibold text-text-subtle uppercase tracking-wider flex items-center gap-1.5">
+                                    <span class="material-symbols-outlined text-[15px] text-primary">timer</span>
+                                    <span>Thời gian chuyển trạng thái</span>
+                                </label>
+                            </div>
+                            <div class="bg-surface-container-low/60 rounded-lg border border-border p-3 space-y-2 text-xs">
+                                <div class="text-[10px] font-semibold text-text-subtle uppercase tracking-wider flex items-center gap-1">
+                                    <span class="material-symbols-outlined text-[13px] text-primary">arrow_forward</span>
+                                    <span>Chuyển tiến</span>
+                                </div>
+                                <div class="flex items-center justify-between">
+                                    <span class="text-text-subtle flex items-center gap-1.5">
+                                        <span class="w-2 h-2 rounded-full bg-slate-400"></span>
+                                        <span class="font-medium text-[11px]">TODO → IN PROGRESS</span>
+                                    </span>
+                                    <span id="timeTodoToProgress" class="font-semibold text-text-main font-mono text-[11px]">--</span>
+                                </div>
+                                <div class="flex items-center justify-between">
+                                    <span class="text-text-subtle flex items-center gap-1.5">
+                                        <span class="w-2 h-2 rounded-full bg-primary"></span>
+                                        <span class="font-medium text-[11px]">IN PROGRESS → REVIEW</span>
+                                    </span>
+                                    <span id="timeProgressToReview" class="font-semibold text-text-main font-mono text-[11px]">--</span>
+                                </div>
+                                <div class="flex items-center justify-between">
+                                    <span class="text-text-subtle flex items-center gap-1.5">
+                                        <span class="w-2 h-2 rounded-full bg-purple-500"></span>
+                                        <span class="font-medium text-[11px]">REVIEW → DONE</span>
+                                    </span>
+                                    <span id="timeReviewToDone" class="font-semibold text-text-main font-mono text-[11px]">--</span>
+                                </div>
+
+                                <div class="pt-2 mt-1 border-t border-border/40 text-[10px] font-semibold text-amber-500 uppercase tracking-wider flex items-center gap-1">
+                                    <span class="material-symbols-outlined text-[13px]">arrow_back</span>
+                                    <span>Chuyển lùi (Reopen / Reject)</span>
+                                </div>
+                                <div class="flex items-center justify-between">
+                                    <span class="text-text-subtle flex items-center gap-1.5">
+                                        <span class="w-2 h-2 rounded-full bg-amber-400"></span>
+                                        <span class="font-medium text-[11px]">DONE → REVIEW</span>
+                                    </span>
+                                    <span id="timeDoneToReview" class="font-semibold text-text-main font-mono text-[11px]">--</span>
+                                </div>
+                                <div class="flex items-center justify-between">
+                                    <span class="text-text-subtle flex items-center gap-1.5">
+                                        <span class="w-2 h-2 rounded-full bg-amber-500"></span>
+                                        <span class="font-medium text-[11px]">REVIEW → IN PROGRESS</span>
+                                    </span>
+                                    <span id="timeReviewToProgress" class="font-semibold text-text-main font-mono text-[11px]">--</span>
+                                </div>
+                                <div class="flex items-center justify-between">
+                                    <span class="text-text-subtle flex items-center gap-1.5">
+                                        <span class="w-2 h-2 rounded-full bg-amber-600"></span>
+                                        <span class="font-medium text-[11px]">IN PROGRESS → TODO</span>
+                                    </span>
+                                    <span id="timeProgressToTodo" class="font-semibold text-text-main font-mono text-[11px]">--</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-xs font-semibold text-text-subtle uppercase tracking-wider mb-1.5" data-i18n="issueDetail.priority">Mức ưu tiên</label>
+                            <div id="priorityBadge" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-surface-container-low text-text-subtle border border-border">
+                                <span class="material-symbols-outlined text-[16px]" id="priorityIcon">flag</span>
+                                <span id="priorityText">-</span>
+                            </div>
+                        </div>
+
+                        <div>
+                            <div class="flex items-center justify-between mb-1.5">
+                                <label class="block text-xs font-semibold text-text-subtle uppercase tracking-wider" data-i18n="issueDetail.assignee">Người phụ trách</label>
+                                <div id="selfAssignActionContainer"></div>
+                            </div>
+                            <div class="flex items-center gap-2.5 min-w-0 bg-surface-container-low/60 p-2.5 rounded-lg border border-border">
+                                <div class="w-8 h-8 rounded-full bg-primary/10 text-primary border border-border flex items-center justify-center text-xs font-bold shrink-0 overflow-hidden" id="assigneeAvatar">?</div>
+                                <div class="min-w-0 flex-1">
+                                    <span class="text-xs font-semibold text-text-main truncate block" id="assigneeName">-</span>
+                                    <span class="text-[11px] text-text-subtle truncate block hidden" id="assigneeRole"></span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-semibold text-text-subtle uppercase tracking-wider mb-1.5" data-i18n="issueDetail.dueDate">Hạn hoàn thành / Deadline</label>
+                            <div class="flex items-center gap-2 px-3 py-2 rounded-lg bg-surface-container-low/60 border border-border text-xs font-medium text-text-main">
+                                <span class="material-symbols-outlined text-[16px] text-text-subtle">calendar_today</span>
+                                <span id="dueDateText">-</span>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-semibold text-text-subtle uppercase tracking-wider mb-1.5" data-i18n="issueDetail.reporter">Người báo cáo</label>
+                            <div class="flex items-center gap-2.5 min-w-0 bg-surface-container-low/60 p-2.5 rounded-lg border border-border">
+                                <div class="w-8 h-8 rounded-full bg-surface-container-high flex items-center justify-center text-xs font-bold text-text-subtle shrink-0 overflow-hidden" id="reporterAvatar">?</div>
+                                <span class="text-xs font-semibold text-text-main truncate" id="reporterName">-</span>
+                            </div>
+                        </div>
+
+                        <!-- Labels Section (Read-only on details sidebar) -->
+                        <div>
+                            <label class="block text-xs font-semibold text-text-subtle uppercase tracking-wider mb-1.5" data-i18n="labels.title">Nhãn / Labels</label>
+                            <div id="issueLabelsContainer" class="flex flex-wrap gap-1.5 min-h-[28px] items-center">
+                                <span class="text-xs text-text-subtle italic">Chưa gắn nhãn nào</span>
+                            </div>
+                        </div>
+
+                        <hr class="border-border">
+
+                        <div class="text-xs text-text-subtle flex flex-col gap-1.5">
+                            <p class="flex items-center justify-between"><span data-i18n="issueDetail.created">Ngày tạo:</span> <span id="createdAt" class="font-medium text-text-main"></span></p>
+                            <p class="flex items-center justify-between"><span data-i18n="issueDetail.updated">Cập nhật:</span> <span id="updatedAt" class="font-medium text-text-main"></span></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Edit Issue Modal -->
+    <div id="editIssueModal" class="fixed inset-0 bg-black/60 hidden flex items-center justify-center z-50 p-4">
+        <div class="bg-surface-container-lowest rounded-xl shadow-2xl w-full max-w-lg p-6 border border-border animate-fade-in relative max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-5 pb-3 border-b border-border">
+                <h3 class="font-headline-sm text-lg text-text-main flex items-center gap-2">
+                    <span class="material-symbols-outlined text-primary">edit_note</span>
+                    <span data-i18n="issueDetail.modal.editTitle">Chỉnh sửa công việc</span>
+                </h3>
+                <button onclick="closeEditModal()" class="text-text-subtle hover:text-text-main cursor-pointer">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
+
+            <form id="editIssueForm" onsubmit="saveIssueEdit(event)" class="space-y-4">
+                <div>
+                    <label class="block font-label-bold text-text-subtle text-xs mb-1"><span data-i18n="issues.modal.summary">Tiêu đề / Title</span> <span class="text-danger">*</span></label>
+                    <input type="text" id="modalEditTitle" required maxlength="200" class="w-full border border-border rounded-lg px-3 py-2 bg-surface-container-low text-text-main text-sm focus:outline-none focus:border-primary"/>
+                </div>
+
+                <div>
+                    <label class="block font-label-bold text-text-subtle text-xs mb-1" data-i18n="issues.modal.desc">Mô tả / Description</label>
+                    <textarea id="modalEditDesc" rows="3" class="w-full border border-border rounded-lg px-3 py-2 bg-surface-container-low text-text-main text-sm focus:outline-none focus:border-primary"></textarea>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block font-label-bold text-text-subtle text-xs mb-1" data-i18n="issueDetail.status">Trạng thái / Status</label>
+                        <select id="modalEditStatus" class="w-full border border-border rounded-lg px-3 py-2 bg-surface-container-low text-text-main text-sm focus:outline-none focus:border-primary cursor-pointer">
+                            <option value="TODO" data-i18n="status.todo">TODO</option>
+                            <option value="IN_PROGRESS" data-i18n="status.inProgress">IN PROGRESS</option>
+                            <option value="REVIEW" data-i18n="status.inReview">IN REVIEW</option>
+                            <option value="DONE" data-i18n="status.done">DONE</option>
+                        </select>
+                        <p id="modalEditStatusNotice" class="text-[11px] text-text-subtle mt-1 hidden" data-i18n="issueDetail.notice.status">Chỉ người tạo, PM hoặc người được giao mới có quyền đổi trạng thái.</p>
+                    </div>
+
+                    <div>
+                        <label class="block font-label-bold text-text-subtle text-xs mb-1" data-i18n="issues.modal.priority">Mức ưu tiên / Priority</label>
+                        <select id="modalEditPriority" class="w-full border border-border rounded-lg px-3 py-2 bg-surface-container-low text-text-main text-sm focus:outline-none focus:border-primary cursor-pointer">
+                            <option value="LOW" data-i18n="priority.low">Low</option>
+                            <option value="MEDIUM" data-i18n="priority.medium">Medium</option>
+                            <option value="HIGH" data-i18n="priority.high">High</option>
+                        </select>
+                        <p id="modalEditPriorityNotice" class="text-[11px] text-text-subtle mt-1 hidden" data-i18n="issueDetail.notice.priority">Chỉ Project Manager mới có quyền đổi độ ưu tiên.</p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block font-label-bold text-text-subtle text-xs mb-1" data-i18n="issues.modal.assignee">Người phụ trách / Assignee</label>
+                        <select id="modalEditAssignee" class="w-full border border-border rounded-lg px-3 py-2 bg-surface-container-low text-text-main text-sm focus:outline-none focus:border-primary cursor-pointer">
+                            <option value="" data-i18n="issueDetail.unassigned">Unassigned (Chưa gán)</option>
+                        </select>
+                        <p id="modalEditAssigneeNotice" class="text-[11px] text-text-subtle mt-1 hidden" data-i18n="issueDetail.notice.assignee">Chỉ Project Manager mới có quyền thay đổi người phụ trách.</p>
+                    </div>
+
+                    <div>
+                        <label class="block font-label-bold text-text-subtle text-xs mb-1" data-i18n="issues.modal.dueDate">Hạn chót / Due Date</label>
+                        <input type="date" id="modalEditDueDate" class="w-full border border-border rounded-lg px-3 py-2 bg-surface-container-low text-text-main text-sm focus:outline-none focus:border-primary cursor-pointer"/>
+                        <p id="modalEditDueDateNotice" class="text-[11px] text-text-subtle mt-1 hidden" data-i18n="issueDetail.notice.dueDate">Chỉ Project Manager mới có quyền thay đổi hạn chót.</p>
+                    </div>
+                </div>
+
+                <div>
+                    <div class="flex items-center justify-between mb-1.5">
+                        <label class="block font-label-bold text-text-subtle text-xs" data-i18n="labels.title">Nhãn / Labels</label>
+                        <div id="modalEditQuickLabelContainer" class="hidden flex items-center gap-1.5">
+                            <input type="text" id="modalEditQuickNewLabelInput" placeholder="Tên nhãn mới..." class="text-xs px-2.5 py-1 rounded-lg border border-border bg-surface-container-low text-text-main focus:outline-none focus:border-primary w-36" onkeydown="if(event.key==='Enter'){event.preventDefault();quickCreateLabelInEditModal();}">
+                            <button type="button" onclick="quickCreateLabelInEditModal()" class="text-xs px-2.5 py-1 bg-primary text-white rounded-lg hover:bg-surface-tint cursor-pointer font-medium shadow-xs flex items-center gap-1 active:scale-95">
+                                <span class="material-symbols-outlined text-[14px]">add</span>
+                                <span>Tạo</span>
+                            </button>
+                        </div>
+                    </div>
+                    <div id="modalEditLabelChips" class="flex flex-wrap gap-1.5 p-2.5 bg-surface-container-low border border-border rounded-lg min-h-[42px] items-center">
+                        <span class="text-xs text-text-subtle italic">Chưa có nhãn nào.</span>
+                    </div>
+                    <p class="text-[11px] text-text-subtle mt-1" data-i18n="labels.selectHint">Nhấp vào nhãn để chọn/bỏ chọn gắn vào công việc</p>
+                </div>
+
+                <!-- Image Management Section in Edit Modal -->
+                <div class="pt-3 border-t border-border">
+                    <div class="flex items-center justify-between mb-2">
+                        <label class="block font-label-bold text-text-subtle text-xs">
+                            <span>Quản lý ảnh đính kèm / Manage Attachments</span>
+                            <span id="modalEditImagesCount" class="text-text-subtle font-normal text-[11px]">(0/10)</span>
+                        </label>
+                        <div>
+                            <input type="file" id="modalEditImageFiles" multiple accept="image/jpeg,image/png,image/webp,image/gif" class="hidden" onchange="onModalEditFilesSelected(this)">
+                            <button type="button" onclick="document.getElementById('modalEditImageFiles').click()" class="text-xs px-2.5 py-1 bg-surface-container-low hover:bg-surface-container-high border border-border text-text-main rounded-lg font-medium transition-all cursor-pointer inline-flex items-center gap-1 shadow-xs active:scale-95">
+                                <span class="material-symbols-outlined text-[15px] text-primary">add_photo_alternate</span>
+                                <span>Thêm ảnh mới</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Existing issue images with delete button -->
+                    <div id="modalEditExistingImages" class="grid grid-cols-3 sm:grid-cols-4 gap-2 mb-2"></div>
+
+                    <!-- Newly selected images preview -->
+                    <div id="modalEditNewImagesSection" class="hidden mt-2 p-2 bg-surface-container-low/50 rounded-lg border border-border">
+                        <p class="text-[11px] text-primary font-semibold mb-1.5 flex items-center gap-1">
+                            <span class="material-symbols-outlined text-[14px]">cloud_upload</span>
+                            <span>Ảnh mới chọn (sẽ tải lên khi bấm Lưu thay đổi):</span>
+                        </p>
+                        <div id="modalEditNewImagesPreview" class="flex flex-wrap gap-2"></div>
+                    </div>
+                </div>
+
+                <div class="flex justify-end gap-3 pt-3 border-t border-border">
+                    <button type="button" onclick="closeEditModal()" class="px-4 py-2 text-text-subtle hover:bg-surface-container-low rounded-lg text-sm font-medium cursor-pointer" data-i18n="issues.modal.cancel">Hủy / Cancel</button>
+                    <button type="submit" id="btnSubmitEditModal" class="px-5 py-2 bg-primary hover:bg-surface-tint text-white rounded-lg text-sm font-semibold shadow-sm flex items-center gap-1.5 cursor-pointer">
+                        <span class="material-symbols-outlined text-[16px]">save</span>
+                        <span data-i18n="issueDetail.modal.saveChanges">Lưu thay đổi</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="js/i18n.js?v=4"></script>
+    <script src="js/app.js?v=7"></script>
+    <script src="js/sidebar.js?v=5"></script>
+    <script>
+        const isAuthenticated = Auth.isAuthenticated();
+        const currentUser = Auth.getUser() || {};
+
+        const urlParams = new URLSearchParams(window.location.search);
+        let projectId = urlParams.get('projectId');
+        const issueId = urlParams.get('issueId') || urlParams.get('id');
+
+        if (!issueId) {
+            window.location.href = isAuthenticated ? 'projects.html' : 'login.html';
+        }
+
+        let currentProject = null;
+        let isUserPmOrAdmin = false;
+        let isGuestMode = false;
+        let allLabels = [];
+        let modalEditSelectedLabelIds = new Set();
+
+        window.onLanguageChanged = function() {
+            loadIssueDetails();
+        };
+
+        async function loadIssueDetails() {
+            try {
+                // 1. Tải chi tiết Issue trước (cho phép cả khách vãng lai nếu issue là public)
+                let issue;
+                try {
+                    issue = await fetchApi(`/projects/${projectId || 0}/issues/${issueId}`);
+                } catch (fetchErr) {
+                    console.error("Lỗi khi tải thông tin công việc:", fetchErr);
+                    if (!isAuthenticated) {
+                        alert("Công việc này ở chế độ riêng tư hoặc yêu cầu đăng nhập.");
+                        window.location.href = `login.html?redirect=${encodeURIComponent(window.location.href)}`;
+                        return;
+                    } else {
+                        // Người dùng đã đăng nhập nhưng không phải thành viên project
+                        document.getElementById('issueTitle').textContent = "Không có quyền truy cập";
+                        document.getElementById('issueDescription').innerHTML = `<div class="p-4 rounded-lg bg-danger/10 border border-danger/20 text-danger text-sm">
+                            <div class="font-semibold mb-1 flex items-center gap-1.5"><span class="material-symbols-outlined text-[18px]">lock</span> Công việc riêng tư</div>
+                            <div>Bạn không phải thành viên của dự án này hoặc không có quyền truy cập vào công việc được yêu cầu.</div>
+                        </div>`;
+                        const actions = document.getElementById('issueActionsContainer');
+                        if (actions) actions.classList.add('hidden');
+                        return;
+                    }
+                }
+
+                currentIssue = issue;
+                if (!projectId && issue && issue.projectId) {
+                    projectId = issue.projectId;
+                }
+
+                // 2. Thử fetch Project details nếu đã đăng nhập
+                if (isAuthenticated && projectId) {
+                    try {
+                        currentProject = await fetchApi(`/projects/${projectId}`);
+                        const currentMember = currentProject && currentProject.members ? currentProject.members.find(m => m.user && (m.user.id === currentUser.userId || m.user.id === currentUser.id || m.user.email === currentUser.email)) : null;
+                        const isPm = currentMember && currentMember.projectRole === 'PROJECT_MANAGER';
+                        const isAdmin = currentUser.role === 'ADMIN';
+                        isUserPmOrAdmin = isPm || isAdmin;
+                    } catch (e) {
+                        currentProject = null;
+                        isUserPmOrAdmin = currentUser.role === 'ADMIN';
+                    }
+                } else {
+                    currentProject = null;
+                    isUserPmOrAdmin = false;
+                }
+
+                // Nhận diện Guest Mode
+                const isProjectMember = isUserPmOrAdmin || (currentProject && currentProject.members && currentProject.members.some(m => m.user && (m.user.id === currentUser.userId || m.user.id === currentUser.id || m.user.email === currentUser.email)));
+                isGuestMode = !isAuthenticated || !isProjectMember;
+
+                // Cập nhật giao diện theo Guest Mode
+                const mainWrapper = document.getElementById('mainLayoutWrapper');
+                const guestTopBar = document.getElementById('guestTopBar');
+                const appSidebar = document.getElementById('appSidebar');
+                const addCommentContainer = document.getElementById('addCommentContainer');
+                const guestCommentNotice = document.getElementById('guestCommentNotice');
+
+                if (isGuestMode) {
+                    if (appSidebar) appSidebar.classList.add('hidden');
+                    if (mainWrapper) mainWrapper.classList.remove('ml-sidebar-width');
+                    if (guestTopBar) guestTopBar.classList.remove('hidden');
+                    if (addCommentContainer) addCommentContainer.classList.add('hidden');
+                    if (guestCommentNotice) guestCommentNotice.classList.remove('hidden');
+                } else {
+                    if (mainWrapper) mainWrapper.classList.add('ml-sidebar-width');
+                    if (guestTopBar) guestTopBar.classList.add('hidden');
+                    if (addCommentContainer) addCommentContainer.classList.remove('hidden');
+                    if (guestCommentNotice) guestCommentNotice.classList.add('hidden');
+                }
+
+                // Cập nhật Breadcrumbs & thông tin cơ bản
+                const pName = currentProject ? currentProject.name : (issue.projectName || issue.projectKey || 'Dự Án');
+                document.getElementById('breadcrumbProjectName').textContent = pName;
+                document.getElementById('breadcrumbProjectName').href = (isAuthenticated && currentProject) ? `board.html?projectId=${projectId}` : '#';
+                document.getElementById('breadcrumbIssueKey').textContent = issue.issueKey || `IS-${issue.id}`;
+                document.getElementById('issueTitle').textContent = issue.title;
+                document.getElementById('issueDescription').textContent = issue.description || 'No description provided.';
+
+                // Labels
+                renderIssueLabels(issue.labels || []);
+                if (isUserPmOrAdmin) {
+                    loadAllLabels();
+                }
+
+                // Hiển thị badge quyền riêng tư (Public / Private)
+                renderVisibilityBadge(issue.isPublic);
+                
+                // Read-only Right Column: Status
+                const statusClasses = getStatusBadgeClass(issue.status);
+                const statusDotClasses = getStatusDotClass(issue.status);
+                const statusBadge = document.getElementById('statusBadge');
+                const statusDot = document.getElementById('statusDot');
+                const statusText = document.getElementById('statusText');
+                if (statusBadge && statusText) {
+                    statusBadge.className = `inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold ${statusClasses}`;
+                    if (statusDot) statusDot.className = `w-2 h-2 rounded-full ${statusDotClasses}`;
+                    statusText.textContent = I18n.getStatusName(issue.status);
+                }
+
+                // Read-only Right Column: Priority
+                const priorityClasses = getPriorityBadgeClass(issue.priority);
+                const priorityBadge = document.getElementById('priorityBadge');
+                const priorityIcon = document.getElementById('priorityIcon');
+                const priorityText = document.getElementById('priorityText');
+                if (priorityBadge && priorityText) {
+                    priorityBadge.className = `inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold ${priorityClasses}`;
+                    if (priorityIcon) priorityIcon.textContent = getPriorityIcon(issue.priority);
+                    priorityText.textContent = I18n.getPriorityName(issue.priority);
+                }
+
+                // Read-only Right Column: Assignee
+                const aNameEl = document.getElementById('assigneeName');
+                const aRoleEl = document.getElementById('assigneeRole');
+                const aAvatarEl = document.getElementById('assigneeAvatar');
+                if (issue.assignee) {
+                    const aName = issue.assignee.fullName || issue.assignee.email || 'User';
+                    if (aNameEl) aNameEl.textContent = aName;
+                    const member = currentProject && currentProject.members ? currentProject.members.find(m => m.user && (m.user.id === issue.assignee.id || m.user.email === issue.assignee.email)) : null;
+                    if (aRoleEl) {
+                        aRoleEl.textContent = member ? (member.projectRole || 'MEMBER') : '';
+                        aRoleEl.classList.remove('hidden');
+                    }
+                    if (aAvatarEl) {
+                        if (issue.assignee.avatarUrl) {
+                            aAvatarEl.innerHTML = `<img src="${issue.assignee.avatarUrl}" class="w-full h-full rounded-full object-cover" />`;
+                        } else {
+                            aAvatarEl.textContent = (aName.charAt(0) || 'U').toUpperCase();
+                        }
+                    }
+                } else {
+                    if (aNameEl) aNameEl.textContent = I18n.t('issueDetail.unassigned') || 'Chưa phân công';
+                    if (aRoleEl) aRoleEl.classList.add('hidden');
+                    if (aAvatarEl) aAvatarEl.textContent = '?';
+                }
+
+                // Render nút tự nhận việc / hủy nhận việc
+                renderSelfAssignAction(issue);
+
+                // Read-only Right Column: Due Date
+                const dueDateText = document.getElementById('dueDateText');
+                if (dueDateText) {
+                    if (issue.dueDate) {
+                        dueDateText.textContent = new Date(issue.dueDate).toLocaleDateString();
+                        dueDateText.classList.remove('text-text-subtle');
+                        dueDateText.classList.add('text-text-main');
+                    } else {
+                        dueDateText.textContent = '-';
+                        dueDateText.classList.remove('text-text-main');
+                        dueDateText.classList.add('text-text-subtle');
+                    }
+                }
+
+                // Reporter
+                if (issue.reporter) {
+                    const rName = issue.reporter.fullName || issue.reporter.email || 'User';
+                    document.getElementById('reporterName').textContent = rName;
+                    const rAvatarEl = document.getElementById('reporterAvatar');
+                    if (issue.reporter.avatarUrl) {
+                        rAvatarEl.innerHTML = `<img src="${issue.reporter.avatarUrl}" class="w-full h-full rounded-full object-cover" />`;
+                    } else {
+                        rAvatarEl.textContent = (rName.charAt(0) || 'U').toUpperCase();
+                    }
+                }
+
+                // Current user comment avatar
+                const myAvatarEl = document.getElementById('currentUserCommentAvatar');
+                if (myAvatarEl) {
+                    if (currentUser.avatarUrl) {
+                        myAvatarEl.innerHTML = `<img src="${currentUser.avatarUrl}" class="w-full h-full rounded-full object-cover" />`;
+                    } else {
+                        myAvatarEl.textContent = (currentUser.fullName || currentUser.email || 'U').substring(0, 1).toUpperCase();
+                    }
+                }
+
+                // Render Issue Images Gallery
+                renderIssueImages(issue.images);
+
+                // Dates
+                document.getElementById('createdAt').textContent = new Date(issue.createdAt).toLocaleString();
+                document.getElementById('updatedAt').textContent = new Date(issue.updatedAt).toLocaleString();
+
+                // Hiển thị 3 biến thời gian chuyển trạng thái
+                renderTransitionTimes(issue);
+
+                // Check Permissions
+                const isReporter = isAuthenticated && issue.reporter && (issue.reporter.id === currentUser.userId || issue.reporter.id === currentUser.id || issue.reporter.email === currentUser.email);
+                const isAssignee = isAuthenticated && issue.assignee && (issue.assignee.id === currentUser.userId || issue.assignee.id === currentUser.id || issue.assignee.email === currentUser.email);
+
+                // NÚT CHANGELOG: Hiện khi người dùng đã đăng nhập
+                const btnStatusHistory = document.getElementById('btnStatusHistory');
+                if (btnStatusHistory) {
+                    if (isAuthenticated) btnStatusHistory.classList.remove('hidden');
+                    else btnStatusHistory.classList.add('hidden');
+                }
+
+                // NÚT CHIA SẺ: CHỈ PM, ADMIN hoặc REPORTER mới có quyền!
+                // Người được giao việc (Assignee) và các thành viên khác KHÔNG được phép chia sẻ link!
+                const canShareIssue = isAuthenticated && (isUserPmOrAdmin || isReporter);
+                const btnShare = document.getElementById('btnShareIssue');
+                if (btnShare) {
+                    if (canShareIssue) btnShare.classList.remove('hidden');
+                    else btnShare.classList.add('hidden');
+                }
+
+                // 1. Chỉ PM hoặc Admin mới có quyền thấy nút "Chỉnh sửa" để sửa tên, mô tả, thông tin issue
+                const canEditIssue = isAuthenticated && isUserPmOrAdmin;
+                const btnEdit = document.getElementById('btnEditIssue');
+                if (btnEdit) {
+                    if (canEditIssue) btnEdit.classList.remove('hidden');
+                    else btnEdit.classList.add('hidden');
+                }
+
+                // 2. Quyền xóa issue: PM, Admin hoặc Người tạo issue
+                const canDelete = isAuthenticated && (isUserPmOrAdmin || isReporter);
+                const btnDelete = document.getElementById('btnDeleteIssue');
+                if (btnDelete) {
+                    if (canDelete) btnDelete.classList.remove('hidden');
+                    else btnDelete.classList.add('hidden');
+                }
+
+                // 4. Thiết lập Quick Status Selector cho người có quyền
+                const quickStatusContainer = document.getElementById('quickStatusContainer');
+                const quickStatusSelect = document.getElementById('quickStatusSelect');
+                const statusRoleNotice = document.getElementById('statusRoleNotice');
+
+                if (quickStatusContainer && quickStatusSelect) {
+                    quickStatusSelect.innerHTML = '';
+                    const canChangeStatus = isAuthenticated && (isUserPmOrAdmin || isReporter || isAssignee);
+
+                    if (canChangeStatus) {
+                        const allStatuses = ['TODO', 'IN_PROGRESS', 'REVIEW', 'DONE'];
+                        allStatuses.forEach(st => {
+                            const opt = document.createElement('option');
+                            opt.value = st;
+                            const isCurrent = st === issue.status;
+                            const isDoneRestricted = (st === 'DONE' && !isUserPmOrAdmin);
+
+                            if (isDoneRestricted && !isCurrent) {
+                                opt.disabled = true;
+                                opt.textContent = `${I18n.getStatusName(st)} (Chỉ PM/Admin)`;
+                            } else {
+                                opt.textContent = isCurrent 
+                                    ? `${I18n.getStatusName(st)} (Hiện tại)` 
+                                    : `Chuyển sang ${I18n.getStatusName(st)}`;
+                            }
+                            if (isCurrent) opt.selected = true;
+                            quickStatusSelect.appendChild(opt);
+                        });
+                        quickStatusContainer.classList.remove('hidden');
+                        if (statusRoleNotice) {
+                            if (!isUserPmOrAdmin) {
+                                statusRoleNotice.textContent = '(Chỉ PM hoặc Admin mới có quyền chuyển trạng thái sang Hoàn thành)';
+                                statusRoleNotice.classList.remove('hidden');
+                            } else {
+                                statusRoleNotice.classList.add('hidden');
+                            }
+                        }
+                    } else {
+                        quickStatusContainer.classList.add('hidden');
+                        if (statusRoleNotice) {
+                            statusRoleNotice.classList.add('hidden');
+                        }
+                    }
+                }
+
+                loadComments();
+            } catch (err) {
+                console.error("Error loading issue", err);
+                alert("Failed to load issue details.");
+            }
+        }
+
+        // ================= Quản lý Chia sẻ & Quyền riêng tư =================
+        function renderVisibilityBadge(isPublic) {
+            const badge = document.getElementById('issueVisibilityBadge');
+            if (!badge) return;
+            if (isPublic) {
+                badge.className = 'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-success/10 text-success border border-success/30 w-fit';
+                badge.innerHTML = '<span class="material-symbols-outlined text-[16px]">public</span> <span>Công khai</span>';
+                badge.title = 'Bất kỳ ai có liên kết đều có thể xem công việc này mà không cần đăng nhập';
+            } else {
+                badge.className = 'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-surface-container-low text-text-subtle border border-border w-fit';
+                badge.innerHTML = '<span class="material-symbols-outlined text-[16px]">lock</span> <span>Riêng tư</span>';
+                badge.title = 'Chỉ thành viên của dự án mới có thể xem';
+            }
+        }
+
+        function openShareModal() {
+            if (!currentIssue) return;
+            const modal = document.getElementById('shareIssueModal');
+            const toggle = document.getElementById('toggleSharePublic');
+            const input = document.getElementById('shareLinkInput');
+            const statusDesc = document.getElementById('shareStatusDescription');
+
+            if (toggle) toggle.checked = !!currentIssue.isPublic;
+            if (input) {
+                input.value = window.location.origin + window.location.pathname + `?projectId=${projectId}&issueId=${issueId}`;
+            }
+            if (statusDesc) {
+                statusDesc.textContent = currentIssue.isPublic 
+                    ? 'Đang công khai: Bất kỳ ai có liên kết đều có thể xem mà không cần đăng nhập.' 
+                    : 'Đang riêng tư: Chỉ thành viên của dự án mới có thể xem.';
+            }
+
+            modal.classList.remove('hidden');
+        }
+
+        function closeShareModal() {
+            const modal = document.getElementById('shareIssueModal');
+            if (modal) modal.classList.add('hidden');
+        }
+
+        async function onToggleSharePublic(isPublic) {
+            if (!currentIssue) return;
+            const statusDesc = document.getElementById('shareStatusDescription');
+            try {
+                const updated = await fetchApi(`/projects/${projectId}/issues/${issueId}/visibility`, {
+                    method: 'PATCH',
+                    body: JSON.stringify({ isPublic: isPublic })
+                });
+                currentIssue.isPublic = updated.isPublic;
+                renderVisibilityBadge(updated.isPublic);
+                if (statusDesc) {
+                    statusDesc.textContent = updated.isPublic 
+                        ? 'Đang công khai: Bất kỳ ai có liên kết đều có thể xem mà không cần đăng nhập.' 
+                        : 'Đang riêng tư: Chỉ thành viên của dự án mới có thể xem.';
+                }
+            } catch (err) {
+                alert(err.message || 'Không thể thay đổi trạng thái chia sẻ');
+                document.getElementById('toggleSharePublic').checked = !!currentIssue.isPublic;
+            }
+        }
+
+        async function copyShareLink() {
+            const input = document.getElementById('shareLinkInput');
+            if (!input) return;
+            try {
+                await navigator.clipboard.writeText(input.value);
+            } catch (err) {
+                input.select();
+                document.execCommand('copy');
+            }
+            const copyIcon = document.getElementById('copyShareIcon');
+            const copyText = document.getElementById('copyShareText');
+            if (copyIcon) copyIcon.textContent = 'check';
+            if (copyText) copyText.textContent = I18n.t('issueDetail.shareModal.copied') || 'Đã sao chép!';
+            setTimeout(() => {
+                if (copyIcon) copyIcon.textContent = 'content_copy';
+                if (copyText) copyText.textContent = I18n.t('issueDetail.shareModal.copyLink') || 'Sao chép';
+            }, 2500);
+        }
+
+        async function updateDueDate(newDueDate) {
+            if (!isUserPmOrAdmin) {
+                alert(I18n.t('issueDetail.alert.dueDateRestricted'));
+                loadIssueDetails();
+                return;
+            }
+
+            const todayStr = new Date().toISOString().split('T')[0];
+            const originalDueDateStr = currentIssue && currentIssue.dueDate ? currentIssue.dueDate.substring(0, 10) : '';
+            if (newDueDate && newDueDate !== originalDueDateStr && newDueDate < todayStr) {
+                alert("Deadline mới phải lớn hơn hoặc bằng thời gian hiện tại.");
+                loadIssueDetails();
+                return;
+            }
+
+            try {
+                await fetchApi(`/projects/${projectId}/issues/${issueId}`, {
+                    method: 'PUT',
+                    body: JSON.stringify({
+                        dueDate: newDueDate ? (newDueDate + 'T23:59:59') : null,
+                        version: currentIssue ? currentIssue.version : null
+                    })
+                });
+                await loadIssueDetails();
+            } catch (err) {
+                console.error("Error updating due date", err);
+                alert(err.message || 'Không thể cập nhật hạn hoàn thành');
+                loadIssueDetails();
+            }
+        }
+
+        async function updateAssignee(newAssigneeId) {
+            if (!isUserPmOrAdmin) {
+                alert(I18n.t('issueDetail.alert.assigneeRestricted'));
+                loadIssueDetails();
+                return;
+            }
+
+            try {
+                await fetchApi(`/projects/${projectId}/issues/${issueId}/assignee`, {
+                    method: 'PATCH',
+                    body: JSON.stringify({ assigneeId: newAssigneeId ? parseInt(newAssigneeId) : null })
+                });
+                
+                // Reload details to update avatar and trigger notifications
+                await loadIssueDetails();
+            } catch (err) {
+                console.error("Error updating assignee", err);
+                alert("Lỗi khi gán người phụ trách: " + (err.message || 'Không thành công'));
+                loadIssueDetails();
+            }
+        }
+
+        function renderSelfAssignAction(issue) {
+            const container = document.getElementById('selfAssignActionContainer');
+            if (!container) return;
+            container.innerHTML = '';
+
+            const currentUser = Auth.getUser() || {};
+            const isAuthenticated = Auth.isAuthenticated();
+            if (!isAuthenticated) return;
+
+            // Nếu issue đã hoàn thành (DONE), không cho phép nhận hoặc hủy việc
+            if (issue.status === 'DONE') return;
+
+            // Kiểm tra user hiện tại có phải thành viên của dự án không
+            const isMember = currentProject && currentProject.members && currentProject.members.some(m => {
+                const u = m.user || m;
+                return u.id === currentUser.id || u.email === currentUser.email;
+            });
+
+            if (!isMember && !isUserPmOrAdmin) return;
+
+            const policy = (currentProject && currentProject.selfAssignPolicy) || 'UNASSIGNED_ONLY';
+            const isCurrentAssignee = issue.assignee && (issue.assignee.id === currentUser.id || issue.assignee.email === currentUser.email);
+
+            if (!issue.assignee) {
+                // Issue chưa có người phụ trách
+                if (policy !== 'NONE' || isUserPmOrAdmin) {
+                    container.innerHTML = `
+                        <button onclick="handleAssignToMe(false)" class="text-[11px] px-2 py-0.5 bg-primary/10 text-primary hover:bg-primary hover:text-white rounded font-medium transition-all inline-flex items-center gap-1 active:scale-95 shadow-xs cursor-pointer" title="Nhận phụ trách công việc này">
+                            <span class="material-symbols-outlined text-[14px]">person_add</span>
+                            <span>Nhận việc</span>
+                        </button>
+                    `;
+                }
+            } else if (isCurrentAssignee) {
+                // Đang là chính mình phụ trách
+                let unassignBtn = '';
+                if (policy !== 'NONE' || isUserPmOrAdmin) {
+                    unassignBtn = `<button onclick="handleUnassignMe()" class="text-[11px] text-text-subtle hover:text-danger ml-1 hover:underline cursor-pointer" title="Hủy nhận việc">Hủy nhận</button>`;
+                }
+                container.innerHTML = `
+                    <div class="flex items-center gap-1">
+                        <span class="bg-primary/15 text-primary text-[10px] font-bold px-1.5 py-0.2 rounded border border-primary/25">Bạn</span>
+                        ${unassignBtn}
+                    </div>
+                `;
+            } else {
+                // Đang do người khác phụ trách
+                if (policy === 'ANY' || isUserPmOrAdmin) {
+                    container.innerHTML = `
+                        <button onclick="handleAssignToMe(true)" class="text-[11px] text-text-subtle hover:text-primary font-medium hover:underline inline-flex items-center gap-0.5 cursor-pointer" title="Chuyển công việc này sang cho bạn">
+                            <span class="material-symbols-outlined text-[13px]">swap_horiz</span>
+                            <span>Chuyển cho tôi</span>
+                        </button>
+                    `;
+                }
+            }
+        }
+
+        async function handleAssignToMe(isReassign = false) {
+            if (isReassign) {
+                const assigneeName = currentIssue && currentIssue.assignee ? (currentIssue.assignee.fullName || currentIssue.assignee.email) : 'người khác';
+                if (!confirm(`Công việc này đang được giao cho "${assigneeName}". Bạn có chắc chắn muốn chuyển sang cho mình phụ trách?`)) {
+                    return;
+                }
+            }
+            try {
+                await fetchApi(`/projects/${projectId}/issues/${issueId}/assign-to-me`, {
+                    method: 'POST'
+                });
+                await loadIssueDetails();
+            } catch (err) {
+                console.error("Error assigning to me", err);
+                alert("Không thể nhận việc: " + (err.message || 'Lỗi không xác định'));
+                loadIssueDetails();
+            }
+        }
+
+        async function handleUnassignMe() {
+            if (!confirm("Bạn có chắc chắn muốn hủy nhận công việc này và đưa về trạng thái Chưa phân công?")) {
+                return;
+            }
+            try {
+                await fetchApi(`/projects/${projectId}/issues/${issueId}/unassign-me`, {
+                    method: 'POST'
+                });
+                await loadIssueDetails();
+            } catch (err) {
+                console.error("Error unassigning me", err);
+                alert("Không thể hủy nhận việc: " + (err.message || 'Lỗi không xác định'));
+                loadIssueDetails();
+            }
+        }
+
+        async function updatePriority(newPriority) {
+            if (!isUserPmOrAdmin) {
+                alert(I18n.t('issueDetail.alert.priorityRestricted'));
+                loadIssueDetails();
+                return;
+            }
+
+            try {
+                await fetchApi(`/projects/${projectId}/issues/${issueId}`, {
+                    method: 'PUT',
+                    body: JSON.stringify({
+                        priority: newPriority,
+                        version: currentIssue ? currentIssue.version : null
+                    })
+                });
+                await loadIssueDetails();
+            } catch (err) {
+                console.error("Error updating priority", err);
+                alert(err.message || 'Không thể cập nhật mức độ ưu tiên');
+                loadIssueDetails();
+            }
+        }
+
+        async function updateStatus(newStatus) {
+            if (newStatus === 'DONE' && !isUserPmOrAdmin) {
+                alert("Chỉ Project Manager hoặc Admin mới có quyền chuyển trạng thái sang Hoàn thành (DONE)");
+                loadIssueDetails();
+                return;
+            }
+            try {
+                await fetchApi(`/projects/${projectId}/issues/${issueId}/status`, {
+                    method: 'PATCH',
+                    body: JSON.stringify({ newStatus: newStatus })
+                });
+                await loadIssueDetails();
+            } catch (err) {
+                console.error("Error updating status", err);
+                alert(err.message || 'Failed to update status');
+                loadIssueDetails(); // revert & refresh
+            }
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+
+        async function loadComments() {
+            try {
+                const data = await fetchApi(`/issues/${issueId}/comments`);
+                const comments = Array.isArray(data) ? data : (data.content || []);
+                const list = document.getElementById('commentsList');
+                list.innerHTML = '';
+
+                const currentUser = Auth.getUser() || {};
+                const currentUserId = currentUser.id || currentUser.userId;
+
+                if (comments.length === 0) {
+                    list.innerHTML = '<div class="text-xs text-text-subtle py-2">Chưa có bình luận nào.</div>';
+                    return;
+                }
+                
+                comments.forEach(c => {
+                    const author = c.author || {};
+                    const authorName = author.fullName || author.email || 'User';
+                    const avatar = (authorName.charAt(0) || 'U').toUpperCase();
+                    const date = new Date(c.createdAt).toLocaleString();
+                    const isEdited = c.updatedAt && (new Date(c.updatedAt).getTime() - new Date(c.createdAt).getTime() > 1000);
+                    const editedText = isEdited ? ` <span class="text-[11px] text-text-subtle/80 italic font-normal" title="${new Date(c.updatedAt).toLocaleString()}">(Đã chỉnh sửa ${new Date(c.updatedAt).toLocaleString()})</span>` : '';
+
+                    const isAuthor = (currentUserId && author.id && currentUserId === author.id) || 
+                                     (currentUser.email && author.email && currentUser.email === author.email);
+                    const canDelete = isAuthor || isUserPmOrAdmin;
+                    const canEdit = isAuthor;
+
+                    let actionsHtml = '';
+                    if (canEdit || canDelete) {
+                        actionsHtml = `
+                            <div class="flex items-center gap-1 opacity-80 group-hover:opacity-100 transition-opacity">
+                                ${canEdit ? `
+                                    <button onclick="startEditComment(${c.id})" class="p-1 text-text-subtle hover:text-primary rounded hover:bg-surface-container-high transition-colors cursor-pointer" title="Sửa bình luận">
+                                        <span class="material-symbols-outlined text-[16px]">edit</span>
+                                    </button>
+                                ` : ''}
+                                ${canDelete ? `
+                                    <button onclick="deleteComment(${c.id})" class="p-1 text-text-subtle hover:text-danger rounded hover:bg-danger/10 transition-colors cursor-pointer" title="Xóa bình luận">
+                                        <span class="material-symbols-outlined text-[16px]">delete</span>
+                                    </button>
+                                ` : ''}
+                            </div>
+                        `;
+                    }
+
+                    const authorAvatarHtml = author.avatarUrl
+                        ? `<img src="${author.avatarUrl}" class="w-8 h-8 rounded-full object-cover flex-shrink-0" alt="${escapeHtml(authorName)}" />`
+                        : `<div class="w-8 h-8 rounded-full bg-surface-container-high flex-shrink-0 flex items-center justify-center text-text-subtle font-bold text-xs">${avatar}</div>`;
+
+                    // Ảnh ở chế độ xem bình luận là thuần túy CHỈ ĐỌC (phóng to khi click)
+                    const commentImagesHtml = (c.images && c.images.length > 0)
+                        ? `<div class="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-3">
+                             ${c.images.map(img => `
+                                <div class="relative group/img rounded-lg overflow-hidden border border-border bg-surface-container-low aspect-video">
+                                    <img src="${img.url}" class="w-full h-full object-cover cursor-pointer hover:scale-105 transition-transform" onclick="openLightbox('${img.url}', '${escapeHtml(img.fileName)}')" alt="${escapeHtml(img.fileName)}" />
+                                </div>
+                             `).join('')}
+                           </div>`
+                        : '';
+
+                    list.innerHTML += `
+                        <div class="flex gap-3 group" id="comment-item-${c.id}">
+                            ${authorAvatarHtml}
+                            <div class="flex-1 bg-surface-container-lowest p-3.5 rounded-lg border border-border">
+                                <div class="flex items-center justify-between mb-1.5">
+                                    <div class="flex items-center gap-2">
+                                        <span class="font-medium text-xs text-text-main">${authorName}</span>
+                                        <span class="text-[11px] text-text-subtle">${date}${editedText}</span>
+                                    </div>
+                                    ${actionsHtml}
+                                </div>
+                                <div id="comment-view-${c.id}">
+                                    <p class="text-xs text-text-main whitespace-pre-wrap">${escapeHtml(c.content)}</p>
+                                    ${commentImagesHtml}
+                                </div>
+                                <div id="comment-edit-${c.id}" class="hidden mt-2">
+                                    <textarea id="comment-edit-input-${c.id}" class="w-full bg-surface-container-low border border-border rounded-lg p-2 text-xs text-text-main focus:outline-none focus:border-primary" rows="2">${escapeHtml(c.content)}</textarea>
+
+                                    <!-- Quản lý ảnh đính kèm hiện tại của comment (xóa ảnh trong chế độ sửa) -->
+                                    <div id="comment-edit-existing-images-${c.id}" class="${c.images && c.images.length > 0 ? 'mt-2.5' : 'hidden'}">
+                                        <label class="block text-[11px] font-medium text-text-subtle mb-1">Ảnh đính kèm hiện tại:</label>
+                                        <div class="grid grid-cols-3 sm:grid-cols-4 gap-2" id="comment-edit-images-grid-${c.id}">
+                                            ${(c.images || []).map(img => `
+                                                <div class="relative group rounded-lg overflow-hidden border border-border bg-surface-container-high aspect-video" id="comment-img-${img.id}">
+                                                    <img src="${img.url}" class="w-full h-full object-cover cursor-pointer" onclick="openLightbox('${img.url}', '${escapeHtml(img.fileName)}')" alt="${escapeHtml(img.fileName)}" />
+                                                    <button type="button" onclick="deleteCommentImage(${c.id}, ${img.id})" class="absolute top-1 right-1 p-1 bg-black/75 hover:bg-danger text-white rounded transition-colors cursor-pointer shadow-sm" title="Xóa ảnh này">
+                                                        <span class="material-symbols-outlined text-[13px]">delete</span>
+                                                    </button>
+                                                    <div class="absolute bottom-0 inset-x-0 bg-black/60 text-white text-[10px] px-1 truncate pointer-events-none">${escapeHtml(img.fileName)}</div>
+                                                </div>
+                                            `).join('')}
+                                        </div>
+                                    </div>
+
+                                    <!-- Đính kèm thêm ảnh mới cho comment khi sửa -->
+                                    <div class="flex items-center justify-between mt-3 pt-2 border-t border-border">
+                                        <div>
+                                            <input type="file" id="comment-edit-files-${c.id}" multiple accept="image/jpeg,image/png,image/webp,image/gif" class="hidden" onchange="onCommentEditFilesSelected(${c.id}, this)">
+                                            <button type="button" onclick="document.getElementById('comment-edit-files-${c.id}').click()" class="text-xs px-2 py-1 text-text-subtle hover:text-primary hover:bg-surface-container rounded-lg font-medium transition-all cursor-pointer inline-flex items-center gap-1 active:scale-95">
+                                                <span class="material-symbols-outlined text-[15px]">attach_file</span>
+                                                <span id="comment-edit-files-text-${c.id}">Thêm ảnh</span>
+                                            </button>
+                                        </div>
+                                        <div class="flex gap-2">
+                                            <button type="button" onclick="cancelEditComment(${c.id})" class="px-2.5 py-1 text-xs text-text-subtle hover:text-text-main rounded hover:bg-surface-container-high transition-colors cursor-pointer">Hủy</button>
+                                            <button type="button" onclick="saveEditComment(${c.id})" id="btn-save-comment-${c.id}" class="px-3 py-1 bg-primary hover:bg-surface-tint text-white rounded text-xs font-semibold shadow-sm transition-colors cursor-pointer">Lưu</button>
+                                        </div>
+                                    </div>
+                                    <div id="comment-edit-files-preview-${c.id}" class="flex flex-wrap gap-2 mt-2"></div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+            } catch (err) {
+                console.error("Error loading comments", err);
+            }
+        }
+
+        // Quản lý ảnh khi chỉnh sửa comment
+        let commentEditNewFiles = {};
+        let commentEditPendingDeleteImageIds = {};
+
+        function onCommentEditFilesSelected(commentId, input) {
+            const files = Array.from(input.files || []);
+            if (!commentEditNewFiles[commentId]) {
+                commentEditNewFiles[commentId] = [];
+            }
+            const existingGrid = document.getElementById(`comment-edit-images-grid-${commentId}`);
+            const existingCount = existingGrid ? existingGrid.children.length : 0;
+            if (existingCount + commentEditNewFiles[commentId].length + files.length > 5) {
+                alert('Tối đa 5 ảnh cho mỗi bình luận');
+                input.value = '';
+                return;
+            }
+            commentEditNewFiles[commentId] = commentEditNewFiles[commentId].concat(files);
+            renderCommentEditNewFilesPreview(commentId);
+            input.value = '';
+        }
+
+        function renderCommentEditNewFilesPreview(commentId) {
+            const container = document.getElementById(`comment-edit-files-preview-${commentId}`);
+            const text = document.getElementById(`comment-edit-files-text-${commentId}`);
+            const files = commentEditNewFiles[commentId] || [];
+            if (!container) return;
+
+            if (files.length === 0) {
+                container.innerHTML = '';
+                if (text) text.textContent = 'Thêm ảnh';
+                return;
+            }
+
+            if (text) text.textContent = `${files.length} ảnh mới`;
+            container.innerHTML = files.map((file, idx) => `
+                <div class="relative group rounded-md overflow-hidden border border-border bg-surface-container-high w-14 h-14 flex items-center justify-center">
+                    <img src="${URL.createObjectURL(file)}" class="w-full h-full object-cover" />
+                    <button type="button" onclick="removeCommentEditNewFile(${commentId}, ${idx})" class="absolute top-0.5 right-0.5 w-4 h-4 bg-black/75 hover:bg-danger text-white rounded-full flex items-center justify-center text-[10px] cursor-pointer" title="Gỡ">×</button>
+                </div>
+            `).join('');
+        }
+
+        function removeCommentEditNewFile(commentId, idx) {
+            if (commentEditNewFiles[commentId]) {
+                commentEditNewFiles[commentId].splice(idx, 1);
+                renderCommentEditNewFilesPreview(commentId);
+            }
+        }
+
+        function deleteCommentImage(commentId, imageId) {
+            if (!commentEditPendingDeleteImageIds[commentId]) {
+                commentEditPendingDeleteImageIds[commentId] = [];
+            }
+            if (!commentEditPendingDeleteImageIds[commentId].includes(imageId)) {
+                commentEditPendingDeleteImageIds[commentId].push(imageId);
+            }
+            const el = document.getElementById(`comment-img-${imageId}`);
+            if (el) el.remove();
+            
+            const grid = document.getElementById(`comment-edit-images-grid-${commentId}`);
+            if (grid && grid.children.length === 0) {
+                const section = document.getElementById(`comment-edit-existing-images-${commentId}`);
+                if (section) section.classList.add('hidden');
+            }
+        }
+
+        function startEditComment(commentId) {
+            commentEditNewFiles[commentId] = [];
+            commentEditPendingDeleteImageIds[commentId] = [];
+            renderCommentEditNewFilesPreview(commentId);
+            document.getElementById(`comment-view-${commentId}`)?.classList.add('hidden');
+            document.getElementById(`comment-edit-${commentId}`)?.classList.remove('hidden');
+            const input = document.getElementById(`comment-edit-input-${commentId}`);
+            if (input) {
+                input.focus();
+                input.setSelectionRange(input.value.length, input.value.length);
+            }
+        }
+
+        function cancelEditComment(commentId) {
+            commentEditNewFiles[commentId] = [];
+            commentEditPendingDeleteImageIds[commentId] = [];
+            document.getElementById(`comment-edit-${commentId}`)?.classList.add('hidden');
+            document.getElementById(`comment-view-${commentId}`)?.classList.remove('hidden');
+            loadComments();
+        }
+
+        async function saveEditComment(commentId) {
+            const input = document.getElementById(`comment-edit-input-${commentId}`);
+            const content = input ? input.value.trim() : '';
+            if (!content) {
+                alert('Nội dung bình luận không được để trống');
+                return;
+            }
+
+            const btn = document.getElementById(`btn-save-comment-${commentId}`);
+            if (btn) {
+                btn.disabled = true;
+                btn.textContent = 'Đang lưu...';
+            }
+
+            try {
+                await fetchApi(`/issues/${issueId}/comments/${commentId}`, {
+                    method: 'PUT',
+                    body: JSON.stringify({ content: content })
+                });
+
+                // Chỉ khi người dùng bấm Lưu, mới thực hiện xóa các ảnh đã gỡ bỏ
+                const pendingDeletes = commentEditPendingDeleteImageIds[commentId] || [];
+                for (const imgId of pendingDeletes) {
+                    try {
+                        await fetchApi(`/images/${imgId}`, { method: 'DELETE' });
+                    } catch (delErr) {
+                        console.error('Lỗi khi xóa ảnh bình luận:', delErr);
+                    }
+                }
+                commentEditPendingDeleteImageIds[commentId] = [];
+
+                // Nếu có chọn thêm ảnh mới trong lúc sửa comment, upload ảnh
+                const newFiles = commentEditNewFiles[commentId] || [];
+                if (newFiles.length > 0) {
+                    const formData = new FormData();
+                    newFiles.forEach(file => formData.append('files', file));
+                    await fetchApi(`/images/comments/${commentId}`, {
+                        method: 'POST',
+                        body: formData
+                    });
+                }
+
+                commentEditNewFiles[commentId] = [];
+                await loadComments();
+            } catch (err) {
+                alert(err.message || 'Không thể cập nhật bình luận');
+                if (btn) {
+                    btn.disabled = false;
+                    btn.textContent = 'Lưu';
+                }
+            }
+        }
+
+        async function deleteComment(commentId) {
+            if (!confirm('Bạn có chắc chắn muốn xóa bình luận này?')) return;
+
+            try {
+                await fetchApi(`/issues/${issueId}/comments/${commentId}`, {
+                    method: 'DELETE'
+                });
+                await loadComments();
+            } catch (err) {
+                alert(err.message || 'Không thể xóa bình luận');
+            }
+        }
+
+        let commentSelectedFiles = [];
+
+        function onCommentFilesSelected(input) {
+            const files = Array.from(input.files || []);
+            if (files.length + commentSelectedFiles.length > 5) {
+                alert('Tối đa 5 ảnh cho mỗi bình luận');
+                input.value = '';
+                return;
+            }
+            commentSelectedFiles = commentSelectedFiles.concat(files);
+            renderCommentSelectedFilesPreview();
+            input.value = '';
+        }
+
+        function renderCommentSelectedFilesPreview() {
+            const container = document.getElementById('commentImagePreviewList');
+            if (!container) return;
+            container.innerHTML = commentSelectedFiles.map((file, idx) => `
+                <div class="relative group rounded-md overflow-hidden border border-border bg-surface-container-high w-16 h-16 flex items-center justify-center">
+                    <img src="${URL.createObjectURL(file)}" class="w-full h-full object-cover" />
+                    <button type="button" onclick="removeCommentSelectedFile(${idx})" class="absolute top-0.5 right-0.5 w-4 h-4 bg-black/70 hover:bg-danger text-white rounded-full flex items-center justify-center text-[10px] cursor-pointer" title="Gỡ">×</button>
+                </div>
+            `).join('');
+            const text = document.getElementById('commentSelectedFilesText');
+            if (text) {
+                text.textContent = commentSelectedFiles.length > 0 ? `${commentSelectedFiles.length} ảnh` : 'Đính kèm ảnh';
+            }
+        }
+
+        function removeCommentSelectedFile(idx) {
+            commentSelectedFiles.splice(idx, 1);
+            renderCommentSelectedFilesPreview();
+        }
+
+        // Xóa thông báo lỗi khi người dùng bắt đầu nhập nội dung bình luận
+        document.addEventListener('DOMContentLoaded', () => {
+            const commentInput = document.getElementById('commentInput');
+            if (commentInput) {
+                commentInput.addEventListener('input', function() {
+                    if (this.value.trim().length > 0) {
+                        const errBox = document.getElementById('commentErrorMsg');
+                        if (errBox) errBox.classList.add('hidden');
+                        this.classList.remove('border-danger');
+                    }
+                });
+            }
+        });
+
+        async function addComment() {
+            const input = document.getElementById('commentInput');
+            const errBox = document.getElementById('commentErrorMsg');
+            const errText = document.getElementById('commentErrorText');
+            const content = input.value.trim();
+
+            // Validate: Bắt buộc phải có nội dung chữ, không được để trống kể cả khi có ảnh đính kèm
+            if (!content) {
+                input.classList.add('border-danger');
+                const msg = commentSelectedFiles.length > 0
+                    ? (I18n.t('issueDetail.comment.textRequiredWithImage') || 'Vui lòng nhập nội dung bình luận (không được để trống nội dung ngay cả khi có đính kèm ảnh).')
+                    : (I18n.t('issueDetail.comment.contentRequired') || 'Vui lòng nhập nội dung bình luận.');
+                if (errBox && errText) {
+                    errText.textContent = msg;
+                    errBox.classList.remove('hidden');
+                } else {
+                    alert(msg);
+                }
+                input.focus();
+                return;
+            }
+
+            if (errBox) errBox.classList.add('hidden');
+            input.classList.remove('border-danger');
+            
+            const btn = document.getElementById('btnSaveComment');
+            btn.disabled = true;
+            btn.textContent = 'Saving...';
+            
+            try {
+                const newComment = await fetchApi(`/issues/${issueId}/comments`, {
+                    method: 'POST',
+                    body: JSON.stringify({ content: content })
+                });
+
+                // Nếu có ảnh đính kèm, upload ảnh cho comment
+                if (commentSelectedFiles.length > 0 && newComment && newComment.id) {
+                    const formData = new FormData();
+                    commentSelectedFiles.forEach(file => formData.append('files', file));
+                    await fetchApi(`/images/comments/${newComment.id}`, {
+                        method: 'POST',
+                        body: formData
+                    });
+                }
+
+                input.value = '';
+                commentSelectedFiles = [];
+                renderCommentSelectedFilesPreview();
+                loadComments();
+            } catch (e) {
+                if (errBox && errText) {
+                    errText.textContent = e.message || "Failed to add comment";
+                    errBox.classList.remove('hidden');
+                } else {
+                    alert(e.message || "Failed to add comment");
+                }
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Save';
+            }
+        }
+
+        // ================= Issue Images Gallery & Lightbox =================
+        // ================= Issue Images Gallery & Lightbox =================
+        function renderIssueImages(images) {
+            const gallery = document.getElementById('issueImagesGallery');
+            const countBadge = document.getElementById('issueImageCount');
+            if (!gallery) return;
+
+            const list = images || [];
+            if (countBadge) countBadge.textContent = list.length;
+
+            if (list.length === 0) {
+                gallery.innerHTML = `<div class="col-span-full py-4 text-xs text-text-subtle italic bg-surface-container-low/40 rounded-lg text-center border border-dashed border-border">Chưa có ảnh đính kèm nào.</div>`;
+                return;
+            }
+
+            gallery.innerHTML = list.map(img => `
+                <div class="relative group rounded-xl overflow-hidden border border-border bg-surface-container-low shadow-xs hover:shadow-md transition-all flex flex-col">
+                    <div class="aspect-video w-full overflow-hidden bg-black/5 relative">
+                        <img src="${img.url}" class="w-full h-full object-cover cursor-pointer hover:scale-105 transition-transform" onclick="openLightbox('${img.url}', '${escapeHtml(img.fileName)}')" alt="${escapeHtml(img.fileName)}" />
+                        <button onclick="openLightbox('${img.url}', '${escapeHtml(img.fileName)}')" class="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity text-white cursor-pointer" title="Phóng to">
+                            <span class="material-symbols-outlined text-[24px]">zoom_in</span>
+                        </button>
+                    </div>
+                    <div class="p-2 flex items-center justify-between text-[11px] bg-surface-container-lowest">
+                        <span class="truncate text-text-main font-medium flex-1" title="${escapeHtml(img.fileName)}">${escapeHtml(img.fileName)}</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // ================= Modal Issue Image Management (Edit Issue) =================
+        let modalEditSelectedNewFiles = [];
+        let modalEditPendingDeleteImageIds = [];
+
+        function renderEditModalImages() {
+            const container = document.getElementById('modalEditExistingImages');
+            const countBadge = document.getElementById('modalEditImagesCount');
+            if (!container) return;
+
+            const allImages = (currentIssue && currentIssue.images) ? currentIssue.images : [];
+            const existingList = allImages.filter(img => !modalEditPendingDeleteImageIds.includes(img.id));
+            const totalCount = existingList.length + modalEditSelectedNewFiles.length;
+            if (countBadge) countBadge.textContent = `(${totalCount}/10)`;
+
+            if (existingList.length === 0) {
+                container.innerHTML = `<div class="col-span-full py-2 text-xs text-text-subtle italic">Chưa có ảnh nào được lưu.</div>`;
+                return;
+            }
+
+            container.innerHTML = existingList.map(img => `
+                <div class="relative group rounded-lg overflow-hidden border border-border bg-surface-container-high aspect-video flex items-center justify-center">
+                    <img src="${img.url}" class="w-full h-full object-cover" alt="${escapeHtml(img.fileName)}" />
+                    <button type="button" onclick="deleteImageFromModal(${img.id})" class="absolute top-1 right-1 w-6 h-6 bg-black/75 hover:bg-danger text-white rounded-full flex items-center justify-center text-xs transition-colors cursor-pointer shadow-sm" title="Xóa ảnh này">
+                        <span class="material-symbols-outlined text-[14px]">delete</span>
+                    </button>
+                    <div class="absolute bottom-0 inset-x-0 bg-black/60 text-white text-[10px] px-1 truncate pointer-events-none">${escapeHtml(img.fileName)}</div>
+                </div>
+            `).join('');
+        }
+
+        function deleteImageFromModal(imageId) {
+            if (!modalEditPendingDeleteImageIds.includes(imageId)) {
+                modalEditPendingDeleteImageIds.push(imageId);
+            }
+            renderEditModalImages();
+        }
+
+        function onModalEditFilesSelected(input) {
+            const files = Array.from(input.files || []);
+            const allImages = (currentIssue && currentIssue.images) ? currentIssue.images : [];
+            const existingCount = allImages.filter(img => !modalEditPendingDeleteImageIds.includes(img.id)).length;
+            if (existingCount + modalEditSelectedNewFiles.length + files.length > 10) {
+                alert(`Công việc chỉ được chứa tối đa 10 ảnh (hiện có ${existingCount} ảnh giữ lại + ${modalEditSelectedNewFiles.length} ảnh mới chọn)`);
+                input.value = '';
+                return;
+            }
+            modalEditSelectedNewFiles = modalEditSelectedNewFiles.concat(files);
+            renderModalEditNewFilesPreview();
+            renderEditModalImages();
+            input.value = '';
+        }
+
+        function renderModalEditNewFilesPreview() {
+            const previewSection = document.getElementById('modalEditNewImagesSection');
+            const previewContainer = document.getElementById('modalEditNewImagesPreview');
+            if (!previewSection || !previewContainer) return;
+
+            if (modalEditSelectedNewFiles.length === 0) {
+                previewSection.classList.add('hidden');
+                previewContainer.innerHTML = '';
+                return;
+            }
+
+            previewSection.classList.remove('hidden');
+            previewContainer.innerHTML = modalEditSelectedNewFiles.map((file, idx) => `
+                <div class="relative group rounded-lg overflow-hidden border border-border bg-surface-container-high w-14 h-14 flex items-center justify-center">
+                    <img src="${URL.createObjectURL(file)}" class="w-full h-full object-cover" />
+                    <button type="button" onclick="removeModalEditNewFile(${idx})" class="absolute top-0.5 right-0.5 w-4 h-4 bg-black/75 hover:bg-danger text-white rounded-full flex items-center justify-center text-[10px] cursor-pointer" title="Hủy chọn">×</button>
+                </div>
+            `).join('');
+        }
+
+        function removeModalEditNewFile(idx) {
+            modalEditSelectedNewFiles.splice(idx, 1);
+            renderModalEditNewFilesPreview();
+            renderEditModalImages();
+        }
+
+        function resetModalEditImages() {
+            modalEditSelectedNewFiles = [];
+            modalEditPendingDeleteImageIds = [];
+            renderModalEditNewFilesPreview();
+            const input = document.getElementById('modalEditImageFiles');
+            if (input) input.value = '';
+        }
+
+        async function deleteImage(imageId) {
+            if (!confirm('Bạn có chắc chắn muốn xóa ảnh này không?')) return;
+            try {
+                await fetchApi(`/images/${imageId}`, {
+                    method: 'DELETE'
+                });
+                await loadIssueDetails();
+                await loadComments();
+            } catch (err) {
+                alert(err.message || 'Không thể xóa ảnh');
+            }
+        }
+
+        function openLightbox(url, name) {
+            document.getElementById('lightboxImage').src = url;
+            document.getElementById('lightboxCaption').textContent = name || '';
+            document.getElementById('imageLightboxModal').classList.remove('hidden');
+        }
+
+        function closeLightbox() {
+            document.getElementById('imageLightboxModal').classList.add('hidden');
+            document.getElementById('lightboxImage').src = '';
+        }
+
+        // Badge & Styling Helper Functions
+        function getStatusBadgeClass(status) {
+            switch (status) {
+                case 'TODO': return 'bg-surface-container-high text-text-subtle border-border';
+                case 'IN_PROGRESS': return 'bg-primary/10 text-primary border-primary/20';
+                case 'REVIEW': return 'bg-warning/15 text-warning border-warning/20';
+                case 'DONE': return 'bg-success/15 text-success border-success/20';
+                default: return 'bg-surface-container text-text-subtle border-border';
+            }
+        }
+
+        function getStatusDotClass(status) {
+            switch (status) {
+                case 'TODO': return 'bg-text-subtle';
+                case 'IN_PROGRESS': return 'bg-primary';
+                case 'REVIEW': return 'bg-warning';
+                case 'DONE': return 'bg-success';
+                default: return 'bg-text-subtle';
+            }
+        }
+
+        function getPriorityBadgeClass(priority) {
+            switch (priority) {
+                case 'HIGH': return 'bg-danger/10 text-danger border-danger/20';
+                case 'MEDIUM': return 'bg-warning/10 text-warning border-warning/20';
+                case 'LOW': return 'bg-success/10 text-success border-success/20';
+                default: return 'bg-surface-container text-text-subtle border-border';
+            }
+        }
+
+        function getPriorityIcon(priority) {
+            switch (priority) {
+                case 'HIGH': return 'keyboard_double_arrow_up';
+                case 'MEDIUM': return 'drag_handle';
+                case 'LOW': return 'keyboard_double_arrow_down';
+                default: return 'flag';
+            }
+        }
+
+        // ================= Labels Management =================
+        // ================= Labels Management =================
+        async function loadAllLabels() {
+            try {
+                allLabels = await fetchApi('/labels') || [];
+            } catch (err) {
+                console.error("Failed to load labels:", err);
+            }
+        }
+
+        // Sidebar: Read-only display of issue labels
+        function renderIssueLabels(labels) {
+            const container = document.getElementById('issueLabelsContainer');
+            if (!container) return;
+
+            const list = Array.from(labels || []);
+            if (list.length === 0) {
+                container.innerHTML = '<span class="text-xs text-text-subtle italic">Chưa gắn nhãn nào</span>';
+                return;
+            }
+
+            container.innerHTML = list.map(lbl => {
+                if (typeof LabelUtils !== 'undefined' && LabelUtils.renderBadge) {
+                    return LabelUtils.renderBadge(lbl, { size: 'sm' });
+                }
+                const name = lbl.name || lbl;
+                const style = (typeof LabelUtils !== 'undefined' && LabelUtils.getColorStyle) 
+                    ? LabelUtils.getColorStyle(name) 
+                    : { bg: '', text: '', border: '', hexBg: '#e5e7eb', hexText: '#374151', hexBorder: '#d1d5db' };
+                
+                return `
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold border shadow-xs ${style.bg} ${style.text} ${style.border}"
+                          style="background-color: ${style.hexBg || style.bg}; color: ${style.hexText || style.text}; border-color: ${style.hexBorder || style.border}">
+                        <span>${name}</span>
+                    </span>
+                `;
+            }).join('');
+        }
+
+        // Edit Issue Modal: Manage labels (select/unselect & quick create)
+        function renderModalEditLabelChips() {
+            const container = document.getElementById('modalEditLabelChips');
+            if (!container) return;
+            if (!allLabels || allLabels.length === 0) {
+                container.innerHTML = '<span class="text-xs text-text-subtle italic">Chưa có nhãn nào trong hệ thống.</span>';
+                return;
+            }
+
+            container.innerHTML = allLabels.map(lbl => {
+                const isSelected = modalEditSelectedLabelIds.has(lbl.id);
+                const style = (typeof LabelUtils !== 'undefined' && LabelUtils.getColorStyle) 
+                    ? LabelUtils.getColorStyle(lbl.name) 
+                    : { bg: '#e5e7eb', text: '#374151', border: '#d1d5db', light: { bg: '#e5e7eb', text: '#374151', border: '#d1d5db' }, dark: { bg: '#1F2937', text: '#9CA3AF', border: '#374151' } };
+                const light = style.light || style;
+                const dark = style.dark || style;
+                return `
+                    <button type="button" onclick="toggleModalEditLabel(${lbl.id})"
+                        class="label-chip px-2.5 py-1 rounded-full text-xs font-medium cursor-pointer transition-all border flex items-center gap-1.5 ${isSelected ? 'ring-2 ring-primary ring-offset-1 font-bold shadow-xs' : 'opacity-70 hover:opacity-100'}"
+                        style="--lbl-bg: ${light.bg}; --lbl-text: ${light.text}; --lbl-border: ${light.border}; --lbl-dark-bg: ${dark.bg}; --lbl-dark-text: ${dark.text}; --lbl-dark-border: ${dark.border}; background-color: ${style.bg}; color: ${style.text}; border-color: ${style.border}">
+                        <span class="material-symbols-outlined text-[13px]">${isSelected ? 'check_circle' : 'label'}</span>
+                        <span>${lbl.name}</span>
+                    </button>
+                `;
+            }).join('');
+        }
+
+        function toggleModalEditLabel(labelId) {
+            if (modalEditSelectedLabelIds.has(labelId)) {
+                modalEditSelectedLabelIds.delete(labelId);
+            } else {
+                modalEditSelectedLabelIds.add(labelId);
+            }
+            renderModalEditLabelChips();
+        }
+
+        async function quickCreateLabelInEditModal() {
+            if (!Auth.isAdmin()) {
+                alert("Chỉ Quản trị viên (Admin) mới có quyền tạo nhãn mới.");
+                return;
+            }
+            const input = document.getElementById('modalEditQuickNewLabelInput');
+            const name = input ? input.value.trim() : '';
+            if (!name) return;
+
+            try {
+                const newLbl = await fetchApi('/labels', {
+                    method: 'POST',
+                    body: JSON.stringify({ name })
+                });
+                if (newLbl && newLbl.id) {
+                    allLabels.push(newLbl);
+                    modalEditSelectedLabelIds.add(newLbl.id);
+                    renderModalEditLabelChips();
+                    input.value = '';
+                }
+            } catch (err) {
+                alert(err.message || 'Không thể tạo nhãn');
+            }
+        }
+
+        // Edit Issue Modal Functions (Chỉ dành riêng cho Project Manager và Admin)
+        function openEditModal() {
+            if (!currentIssue) return;
+            if (!isUserPmOrAdmin) {
+                alert("Chỉ Project Manager hoặc Admin mới có quyền chỉnh sửa công việc.");
+                return;
+            }
+
+            document.getElementById('modalEditTitle').value = currentIssue.title || '';
+            document.getElementById('modalEditDesc').value = currentIssue.description || '';
+            
+            // Status
+            const editStatusSelect = document.getElementById('modalEditStatus');
+            editStatusSelect.value = currentIssue.status || 'TODO';
+            editStatusSelect.disabled = false;
+            editStatusSelect.classList.remove('cursor-not-allowed', 'opacity-60');
+            document.getElementById('modalEditStatusNotice')?.classList.add('hidden');
+
+            // Priority
+            const editPrioritySelect = document.getElementById('modalEditPriority');
+            editPrioritySelect.value = currentIssue.priority || 'MEDIUM';
+            editPrioritySelect.disabled = false;
+            editPrioritySelect.classList.remove('cursor-not-allowed', 'opacity-60');
+            document.getElementById('modalEditPriorityNotice')?.classList.add('hidden');
+
+            // Assignee
+            const editAssigneeSelect = document.getElementById('modalEditAssignee');
+            editAssigneeSelect.innerHTML = `<option value="">${I18n.t('issueDetail.unassigned') || 'Unassigned (Chưa gán)'}</option>`;
+            if (currentProject && currentProject.members) {
+                currentProject.members.forEach(m => {
+                    const u = m.user || {};
+                    // Do not allow selecting locked users
+                    if (u.locked && (!currentIssue.assignee || currentIssue.assignee.id !== u.id)) {
+                        return;
+                    }
+                    const uName = u.fullName || u.email || 'User #' + u.id;
+                    const opt = document.createElement('option');
+                    opt.value = u.id;
+                    if (u.locked) {
+                        opt.disabled = true;
+                        opt.textContent = `${uName} (${m.projectRole || 'MEMBER'}) - [Đã bị khóa]`;
+                    } else {
+                        opt.textContent = `${uName} (${m.projectRole || 'MEMBER'})`;
+                    }
+                    editAssigneeSelect.appendChild(opt);
+                });
+            }
+            editAssigneeSelect.value = currentIssue.assignee ? currentIssue.assignee.id : '';
+            editAssigneeSelect.disabled = false;
+            editAssigneeSelect.classList.remove('cursor-not-allowed', 'opacity-60');
+            document.getElementById('modalEditAssigneeNotice')?.classList.add('hidden');
+            
+            // Due Date
+            const editDueDateInput = document.getElementById('modalEditDueDate');
+            editDueDateInput.value = currentIssue.dueDate ? currentIssue.dueDate.substring(0, 10) : '';
+            editDueDateInput.removeAttribute('min');
+            editDueDateInput.disabled = false;
+            editDueDateInput.classList.remove('cursor-not-allowed', 'opacity-60');
+            document.getElementById('modalEditDueDateNotice')?.classList.add('hidden');
+
+            // Labels in Edit Modal
+            modalEditSelectedLabelIds = new Set((currentIssue.labels || []).map(l => (typeof l === 'object' ? l.id : null)).filter(Boolean));
+            renderModalEditLabelChips();
+            const quickLblInput = document.getElementById('modalEditQuickNewLabelInput');
+            if (quickLblInput) quickLblInput.value = '';
+
+            const quickContainer = document.getElementById('modalEditQuickLabelContainer');
+            if (quickContainer) {
+                if (Auth.isAdmin()) {
+                    quickContainer.classList.remove('hidden');
+                } else {
+                    quickContainer.classList.add('hidden');
+                }
+            }
+
+            resetModalEditImages();
+            renderEditModalImages();
+
+            document.getElementById('editIssueModal').classList.remove('hidden');
+        }
+
+        function closeEditModal() {
+            document.getElementById('editIssueModal').classList.add('hidden');
+            const quickLblInput = document.getElementById('modalEditQuickNewLabelInput');
+            if (quickLblInput) quickLblInput.value = '';
+            resetModalEditImages();
+        }
+
+        async function saveIssueEdit(e) {
+            e.preventDefault();
+            if (!currentIssue) return;
+            if (!isUserPmOrAdmin) {
+                alert("Chỉ Project Manager hoặc Admin mới có quyền chỉnh sửa công việc.");
+                return;
+            }
+
+            const title = document.getElementById('modalEditTitle').value.trim();
+            const description = document.getElementById('modalEditDesc').value.trim();
+            const statusVal = document.getElementById('modalEditStatus').value;
+            const priority = document.getElementById('modalEditPriority').value;
+            const assigneeVal = document.getElementById('modalEditAssignee').value;
+            const dueDateVal = document.getElementById('modalEditDueDate').value;
+
+            // Chỉ validate ngày tương lai khi người dùng thực sự chọn thay đổi sang một deadline khác
+            const originalDueDateVal = currentIssue.dueDate ? currentIssue.dueDate.substring(0, 10) : '';
+            if (dueDateVal && dueDateVal !== originalDueDateVal) {
+                const todayStr = new Date().toISOString().split('T')[0];
+                if (dueDateVal < todayStr) {
+                    alert("Deadline mới phải lớn hơn hoặc bằng thời gian hiện tại.");
+                    return;
+                }
+            }
+
+            const btn = document.getElementById('btnSubmitEditModal');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="material-symbols-outlined text-[16px] animate-spin">progress_activity</span>';
+
+            const payload = {
+                title,
+                description,
+                version: currentIssue.version,
+                labelIds: Array.from(modalEditSelectedLabelIds)
+            };
+
+            if (isUserPmOrAdmin) {
+                payload.priority = priority;
+                payload.dueDate = dueDateVal ? (dueDateVal + 'T23:59:59') : null;
+                if (assigneeVal) {
+                    payload.assigneeId = parseInt(assigneeVal, 10);
+                } else {
+                    payload.unassign = true;
+                }
+            }
+
+            const currentUser = Auth.getUser() || {};
+            const isReporter = currentIssue.reporter && (currentIssue.reporter.id === currentUser.userId || currentIssue.reporter.id === currentUser.id || currentIssue.reporter.email === currentUser.email);
+            const isAssignee = currentIssue.assignee && (currentIssue.assignee.id === currentUser.userId || currentIssue.assignee.id === currentUser.id || currentIssue.assignee.email === currentUser.email);
+            const canChangeStatus = isUserPmOrAdmin || isReporter || isAssignee;
+
+            if (canChangeStatus && statusVal && statusVal !== currentIssue.status) {
+                if (statusVal === 'DONE' && !isUserPmOrAdmin) {
+                    alert("Chỉ Project Manager hoặc Admin mới có quyền chuyển trạng thái sang Hoàn thành (DONE)");
+                    return;
+                }
+                payload.status = statusVal;
+            }
+
+            try {
+                await fetchApi(`/projects/${projectId}/issues/${issueId}`, {
+                    method: 'PUT',
+                    body: JSON.stringify(payload)
+                });
+
+                // Chỉ khi người dùng bấm Lưu, mới thực hiện gọi API xóa các ảnh đã gỡ bỏ trong modal
+                if (modalEditPendingDeleteImageIds.length > 0) {
+                    for (const imgId of modalEditPendingDeleteImageIds) {
+                        try {
+                            await fetchApi(`/images/${imgId}`, { method: 'DELETE' });
+                        } catch (delErr) {
+                            console.error('Lỗi khi xóa ảnh công việc:', delErr);
+                        }
+                    }
+                    modalEditPendingDeleteImageIds = [];
+                }
+
+                // Nếu có chọn thêm ảnh mới trong modal, upload ngay
+                if (modalEditSelectedNewFiles.length > 0) {
+                    const formData = new FormData();
+                    modalEditSelectedNewFiles.forEach(f => formData.append('files', f));
+                    await fetchApi(`/images/issues/${issueId}`, {
+                        method: 'POST',
+                        body: formData
+                    });
+                }
+
+                closeEditModal();
+                await loadIssueDetails();
+            } catch (err) {
+                alert(err.message || 'Không thể cập nhật công việc');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<span class="material-symbols-outlined text-[16px]">save</span> <span data-i18n="issueDetail.modal.saveChanges">Lưu thay đổi</span>';
+            }
+        }
+
+        async function deleteCurrentIssue() {
+            if (!currentIssue) return;
+            const key = currentIssue.issueKey || ('#' + currentIssue.id);
+            if (!confirm(`Bạn có chắc chắn muốn xóa công việc ${key}? Toàn bộ dữ liệu và bình luận liên quan sẽ bị xóa vĩnh viễn.`)) {
+                return;
+            }
+
+            try {
+                await fetchApi(`/projects/${projectId}/issues/${issueId}`, {
+                    method: 'DELETE'
+                });
+                alert(`Đã xóa công việc ${key} thành công!`);
+                window.location.href = `issues.html?projectId=${projectId}`;
+            } catch (err) {
+                alert(err.message || 'Không thể xóa công việc');
+            }
+        }
+
+        // ================= Status History / Changelog =================
+        function formatDurationSeconds(seconds) {
+            if (seconds === null || seconds === undefined) {
+                return '<span class="text-text-subtle font-normal italic">--</span>';
+            }
+            const s = Number(seconds);
+            if (isNaN(s)) return '--';
+            if (s === 0) return '0s';
+            if (s < 60) return `${s}s`;
+            const m = Math.floor(s / 60);
+            const remainSeconds = s % 60;
+            if (m < 60) {
+                return remainSeconds > 0 ? `${m}m ${remainSeconds}s` : `${m}m`;
+            }
+            const hours = Math.floor(m / 60);
+            const remainMinutes = m % 60;
+            if (hours < 24) {
+                return remainMinutes > 0 ? `${hours}h ${remainMinutes}m` : `${hours}h`;
+            }
+            const days = Math.floor(hours / 24);
+            const remainHours = hours % 24;
+            return remainHours > 0 ? `${days}d ${remainHours}h` : `${days}d`;
+        }
+        const formatDurationMinutes = formatDurationSeconds;
+
+        function renderTransitionTimes(issue) {
+            const elTodo = document.getElementById('timeTodoToProgress');
+            const elProgress = document.getElementById('timeProgressToReview');
+            const elReview = document.getElementById('timeReviewToDone');
+            const elDoneToReview = document.getElementById('timeDoneToReview');
+            const elReviewToProgress = document.getElementById('timeReviewToProgress');
+            const elProgressToTodo = document.getElementById('timeProgressToTodo');
+
+            if (elTodo) elTodo.innerHTML = formatDurationSeconds(issue.timeTodoToProgress);
+            if (elProgress) elProgress.innerHTML = formatDurationSeconds(issue.timeProgressToReview);
+            if (elReview) elReview.innerHTML = formatDurationSeconds(issue.timeReviewToDone);
+            if (elDoneToReview) elDoneToReview.innerHTML = formatDurationSeconds(issue.timeDoneToReview);
+            if (elReviewToProgress) elReviewToProgress.innerHTML = formatDurationSeconds(issue.timeReviewToProgress);
+            if (elProgressToTodo) elProgressToTodo.innerHTML = formatDurationSeconds(issue.timeProgressToTodo);
+        }
+
+        // ================= Activity Changelog / History =================
+        let cachedChangeLogs = [];
+        let currentChangelogFilter = 'ALL';
+
+        async function openStatusHistoryModal() {
+            const modal = document.getElementById('statusHistoryModal');
+            const badge = document.getElementById('modalIssueKeyBadge');
+            const list = document.getElementById('statusHistoryList');
+            const countText = document.getElementById('statusHistoryCountText');
+            if (!modal) return;
+
+            if (badge && currentIssue) {
+                badge.textContent = currentIssue.issueKey || `IS-${currentIssue.id}`;
+            }
+
+            currentChangelogFilter = 'ALL';
+            updateChangelogFilterTabs();
+            modal.classList.remove('hidden');
+
+            if (list) {
+                list.innerHTML = `
+                    <div class="flex flex-col items-center justify-center py-12 text-text-subtle gap-2">
+                        <span class="material-symbols-outlined text-3xl animate-spin text-primary">progress_activity</span>
+                        <span class="text-xs">Đang tải lịch sử thay đổi...</span>
+                    </div>`;
+            }
+
+            try {
+                const logs = await fetchApi(`/projects/${projectId}/issues/${issueId}/change-logs`);
+                cachedChangeLogs = Array.isArray(logs) ? logs : [];
+                renderChangeLogsList(cachedChangeLogs, currentChangelogFilter);
+            } catch (err) {
+                console.error("Lỗi khi tải lịch sử thay đổi:", err);
+                if (list) {
+                    list.innerHTML = `
+                        <div class="p-4 rounded-lg bg-danger/10 border border-danger/20 text-danger text-xs flex items-center gap-2">
+                            <span class="material-symbols-outlined text-[18px]">error</span>
+                            <span>Không thể tải lịch sử thay đổi: ${escapeHtml(err.message || 'Lỗi hệ thống')}</span>
+                        </div>`;
+                }
+                if (countText) countText.textContent = '';
+            }
+        }
+
+        function closeStatusHistoryModal() {
+            const modal = document.getElementById('statusHistoryModal');
+            if (modal) modal.classList.add('hidden');
+        }
+
+        function setChangelogFilter(filter) {
+            currentChangelogFilter = filter;
+            updateChangelogFilterTabs();
+            renderChangeLogsList(cachedChangeLogs, currentChangelogFilter);
+        }
+
+        function updateChangelogFilterTabs() {
+            const tabs = ['ALL', 'STATUS', 'ASSIGNEE', 'OTHER'];
+            tabs.forEach(tab => {
+                const btn = document.getElementById(`tabChangelog_${tab}`);
+                if (!btn) return;
+                if (currentChangelogFilter === tab) {
+                    btn.className = "px-2.5 py-1 rounded-md text-xs font-semibold bg-primary text-white shadow-xs transition-colors cursor-pointer";
+                } else {
+                    btn.className = "px-2.5 py-1 rounded-md text-xs font-medium text-text-subtle hover:text-text-main hover:bg-surface-container transition-colors cursor-pointer";
+                }
+            });
+        }
+
+        function formatChangelogDateTime(dateStr) {
+            if (!dateStr) return '--';
+            try {
+                const d = new Date(dateStr);
+                if (isNaN(d.getTime())) return dateStr;
+                return d.toLocaleString('vi-VN', {
+                    hour: '2-digit', minute: '2-digit',
+                    day: '2-digit', month: '2-digit', year: 'numeric'
+                });
+            } catch (e) {
+                return dateStr;
+            }
+        }
+
+        function renderChangeLogsList(allLogs, filter) {
+            const list = document.getElementById('statusHistoryList');
+            const countText = document.getElementById('statusHistoryCountText');
+            if (!list) return;
+
+            let filtered = allLogs;
+            if (filter === 'STATUS') {
+                filtered = allLogs.filter(l => l.fieldName === 'STATUS');
+            } else if (filter === 'ASSIGNEE') {
+                filtered = allLogs.filter(l => l.fieldName === 'ASSIGNEE');
+            } else if (filter === 'OTHER') {
+                filtered = allLogs.filter(l => l.fieldName !== 'STATUS' && l.fieldName !== 'ASSIGNEE');
+            }
+
+            if (!filtered || filtered.length === 0) {
+                list.innerHTML = `
+                    <div class="flex flex-col items-center justify-center py-10 text-text-subtle gap-2 bg-surface-container-low/30 rounded-xl border border-dashed border-border">
+                        <span class="material-symbols-outlined text-4xl text-text-subtle/50">history_toggle_off</span>
+                        <span class="text-xs font-medium">Chưa có bản ghi thay đổi nào ${filter !== 'ALL' ? 'cho bộ lọc này' : ''}</span>
+                        <span class="text-[11px] text-text-subtle/70">Các thao tác chỉnh sửa công việc sẽ được ghi lại tự động tại đây</span>
+                    </div>`;
+                if (countText) countText.textContent = `Tổng: 0 / ${allLogs.length} sự kiện`;
+                return;
+            }
+
+            if (countText) {
+                countText.textContent = filter === 'ALL'
+                    ? `Tổng: ${filtered.length} lần cập nhật`
+                    : `Hiển thị: ${filtered.length} / ${allLogs.length} lần cập nhật`;
+            }
+
+            // Hiển thị mới nhất lên trên
+            const sorted = [...filtered].reverse();
+            let html = '';
+
+            sorted.forEach((item, index) => {
+                const eventNum = filtered.length - index;
+                const changedAtStr = formatChangelogDateTime(item.changedAt);
+                const userName = item.changedBy ? (item.changedBy.fullName || item.changedBy.email || 'Người dùng') : 'Hệ thống';
+                const userAvatar = item.changedBy && item.changedBy.avatarUrl
+                    ? `<img src="${item.changedBy.avatarUrl}" class="w-5 h-5 rounded-full object-cover" />`
+                    : `<div class="w-5 h-5 rounded-full bg-primary/10 text-primary text-[10px] font-bold flex items-center justify-center">${escapeHtml(userName.charAt(0).toUpperCase())}</div>`;
+
+                let fieldBadge = '';
+                let contentHtml = '';
+
+                switch (item.fieldName) {
+                    case 'STATUS': {
+                        const oldClass = getStatusBadgeClass(item.oldValue);
+                        const newClass = getStatusBadgeClass(item.newValue);
+                        const oldName = I18n.getStatusName(item.oldValue);
+                        const newName = I18n.getStatusName(item.newValue);
+                        const durationFormatted = formatDurationMinutes(item.transitionTimeMinutes);
+
+                        fieldBadge = `
+                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-primary/10 text-primary border border-primary/20">
+                                <span class="material-symbols-outlined text-[12px]">sync_alt</span>Trạng thái
+                            </span>`;
+
+                        contentHtml = `
+                            <div class="flex items-center gap-2 flex-wrap text-xs">
+                                <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold ${oldClass}">${escapeHtml(oldName)}</span>
+                                <span class="material-symbols-outlined text-[14px] text-text-subtle">arrow_forward</span>
+                                <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold ${newClass}">${escapeHtml(newName)}</span>
+                                ${item.transitionTimeMinutes != null ? `
+                                    <span class="text-[11px] text-text-subtle ml-auto flex items-center gap-1">
+                                        <span>Ở trạng thái trước:</span>
+                                        <span class="font-semibold text-text-main font-mono bg-surface-container-highest px-2 py-0.5 rounded">${durationFormatted}</span>
+                                    </span>` : ''}
+                            </div>`;
+                        break;
+                    }
+                    case 'ASSIGNEE': {
+                        fieldBadge = `
+                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-info/10 text-info border border-info/20">
+                                <span class="material-symbols-outlined text-[12px]">person</span>Người phụ trách
+                            </span>`;
+
+                        const renderUserTag = (u) => {
+                            if (!u) return '<span class="text-text-subtle italic text-xs">Chưa phân công</span>';
+                            const av = u.avatarUrl
+                                ? `<img src="${u.avatarUrl}" class="w-4 h-4 rounded-full object-cover" />`
+                                : `<span class="w-4 h-4 rounded-full bg-surface-container-highest text-[9px] font-bold flex items-center justify-center">${escapeHtml((u.fullName || 'U').charAt(0).toUpperCase())}</span>`;
+                            return `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-surface-container text-text-main text-xs font-medium border border-border">${av}${escapeHtml(u.fullName || u.email || 'Người dùng')}</span>`;
+                        };
+
+                        contentHtml = `
+                            <div class="flex items-center gap-2 flex-wrap text-xs">
+                                ${renderUserTag(item.oldAssignee)}
+                                <span class="material-symbols-outlined text-[14px] text-text-subtle">arrow_forward</span>
+                                ${renderUserTag(item.newAssignee)}
+                            </div>`;
+                        break;
+                    }
+                    case 'PRIORITY': {
+                        fieldBadge = `
+                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-warning/10 text-warning border border-warning/20">
+                                <span class="material-symbols-outlined text-[12px]">flag</span>Độ ưu tiên
+                            </span>`;
+
+                        const oldCls = getPriorityBadgeClass(item.oldValue);
+                        const newCls = getPriorityBadgeClass(item.newValue);
+                        const oldName = item.oldValue ? I18n.getPriorityName(item.oldValue) : '--';
+                        const newName = item.newValue ? I18n.getPriorityName(item.newValue) : '--';
+
+                        contentHtml = `
+                            <div class="flex items-center gap-2 flex-wrap text-xs">
+                                <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold ${oldCls}">${escapeHtml(oldName)}</span>
+                                <span class="material-symbols-outlined text-[14px] text-text-subtle">arrow_forward</span>
+                                <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold ${newCls}">${escapeHtml(newName)}</span>
+                            </div>`;
+                        break;
+                    }
+                    case 'DUE_DATE': {
+                        fieldBadge = `
+                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-secondary/10 text-secondary border border-secondary/20">
+                                <span class="material-symbols-outlined text-[12px]">event</span>Hạn chót
+                            </span>`;
+
+                        const oldD = item.oldValue ? formatChangelogDateTime(item.oldValue) : '<span class="text-text-subtle italic">Không có hạn</span>';
+                        const newD = item.newValue ? formatChangelogDateTime(item.newValue) : '<span class="text-text-subtle italic">Không có hạn</span>';
+
+                        contentHtml = `
+                            <div class="flex items-center gap-2 flex-wrap text-xs font-mono">
+                                <span class="text-text-subtle">${oldD}</span>
+                                <span class="material-symbols-outlined text-[14px] text-text-subtle">arrow_forward</span>
+                                <span class="font-semibold text-text-main">${newD}</span>
+                            </div>`;
+                        break;
+                    }
+                    case 'TITLE': {
+                        fieldBadge = `
+                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-surface-container-high text-text-subtle border border-border">
+                                <span class="material-symbols-outlined text-[12px]">title</span>Tiêu đề
+                            </span>`;
+
+                        contentHtml = `
+                            <div class="flex flex-col gap-1 text-xs">
+                                <div class="text-text-subtle line-through truncate max-w-lg">${escapeHtml(item.oldValue || '--')}</div>
+                                <div class="font-semibold text-text-main flex items-center gap-1.5">
+                                    <span class="material-symbols-outlined text-[14px] text-primary">arrow_forward</span>
+                                    <span>${escapeHtml(item.newValue || '--')}</span>
+                                </div>
+                            </div>`;
+                        break;
+                    }
+                    case 'DESCRIPTION': {
+                        fieldBadge = `
+                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-surface-container-high text-text-subtle border border-border">
+                                <span class="material-symbols-outlined text-[12px]">description</span>Mô tả
+                            </span>`;
+
+                        contentHtml = `
+                            <div class="text-xs text-text-main italic flex items-center gap-1.5">
+                                <span class="material-symbols-outlined text-[14px] text-primary">edit_note</span>
+                                <span>Nội dung mô tả công việc đã được cập nhật</span>
+                            </div>`;
+                        break;
+                    }
+                    default: {
+                        fieldBadge = `
+                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-surface-container-high text-text-subtle border border-border">
+                                ${escapeHtml(item.fieldName || 'Thay đổi')}
+                            </span>`;
+                        contentHtml = `
+                            <div class="text-xs text-text-main">
+                                <span class="text-text-subtle">${escapeHtml(item.oldValue || 'null')}</span>
+                                <span class="mx-1">→</span>
+                                <span class="font-semibold">${escapeHtml(item.newValue || 'null')}</span>
+                            </div>`;
+                        break;
+                    }
+                }
+
+                html += `
+                    <div class="p-3.5 bg-surface-container-low/70 hover:bg-surface-container-low border border-border rounded-xl transition-all flex flex-col gap-2.5">
+                        <div class="flex items-center justify-between gap-2 flex-wrap">
+                            <div class="flex items-center gap-2">
+                                <span class="w-5 h-5 rounded-full bg-surface-container-high text-text-subtle text-[11px] font-mono font-bold flex items-center justify-center shrink-0">#${eventNum}</span>
+                                ${fieldBadge}
+                            </div>
+                            <span class="text-[11px] text-text-subtle font-mono">${changedAtStr}</span>
+                        </div>
+
+                        <div class="py-1">
+                            ${contentHtml}
+                        </div>
+
+                        <div class="flex items-center justify-between text-xs text-text-subtle pt-2 border-t border-border/40 gap-2 flex-wrap">
+                            <div class="flex items-center gap-1.5">
+                                ${userAvatar}
+                                <span class="text-text-main font-medium">${escapeHtml(userName)}</span>
+                            </div>
+                        </div>
+                    </div>`;
+            });
+
+            list.innerHTML = html;
+        }
+
+        loadIssueDetails();
+    </script>
+
+    <!-- Share Issue Modal -->
+    <div id="shareIssueModal" class="fixed inset-0 bg-black/60 hidden z-50 flex items-center justify-center p-4 backdrop-blur-xs" onclick="closeShareModal()">
+        <div class="bg-surface border border-border rounded-xl shadow-2xl max-w-md w-full p-5 relative" onclick="event.stopPropagation()">
+            <div class="flex items-center justify-between pb-3 border-b border-border">
+                <div class="flex items-center gap-2">
+                    <span class="material-symbols-outlined text-primary text-[22px]">share</span>
+                    <h3 class="font-semibold text-text-main text-base" data-i18n="issueDetail.shareModal.title">Chia Sẻ Công Việc</h3>
+                </div>
+                <button onclick="closeShareModal()" class="text-text-subtle hover:text-text-main cursor-pointer p-1 rounded-lg hover:bg-surface-container">
+                    <span class="material-symbols-outlined text-[20px]">close</span>
+                </button>
+            </div>
+
+            <div class="py-4 flex flex-col gap-4">
+                <div class="flex items-center justify-between p-3.5 rounded-lg bg-surface-container-low border border-border">
+                    <div class="flex flex-col pr-3">
+                        <span class="text-xs font-semibold text-text-main" data-i18n="issueDetail.shareModal.publicToggle">Công khai trên Internet</span>
+                        <span class="text-[11px] text-text-subtle mt-0.5" id="shareStatusDescription">Cho phép bất kỳ ai có liên kết đều có thể xem mà không cần đăng nhập.</span>
+                    </div>
+                    <label class="relative inline-flex items-center cursor-pointer shrink-0">
+                        <input type="checkbox" id="toggleSharePublic" class="sr-only peer" onchange="onToggleSharePublic(this.checked)">
+                        <div class="w-11 h-6 bg-surface-container-highest peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                    </label>
+                </div>
+
+                <p class="text-xs text-text-subtle leading-relaxed" data-i18n="issueDetail.shareModal.desc">
+                    Bất kỳ ai có liên kết đều có thể xem công việc này mà không cần đăng nhập khi bật chế độ công khai.
+                </p>
+
+                <div class="flex flex-col gap-1.5">
+                    <label class="text-xs font-medium text-text-main">Liên kết chia sẻ</label>
+                    <div class="flex items-center gap-2">
+                        <input type="text" id="shareLinkInput" readonly class="flex-1 bg-surface-container-lowest border border-border rounded-lg px-3 py-2 text-xs text-text-main font-mono select-all focus:outline-none focus:border-primary" />
+                        <button onclick="copyShareLink()" id="btnCopyShareLink" class="px-3.5 py-2 bg-primary hover:bg-primary-container text-white text-xs font-medium rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer shrink-0 shadow-xs">
+                            <span class="material-symbols-outlined text-[16px]" id="copyShareIcon">content_copy</span>
+                            <span id="copyShareText" data-i18n="issueDetail.shareModal.copyLink">Sao chép</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Lightbox Modal -->
+    <div id="imageLightboxModal" class="fixed inset-0 bg-black/85 hidden z-50 flex items-center justify-center p-4 backdrop-blur-xs" onclick="closeLightbox()">
+        <div class="relative max-w-4xl max-h-[90vh] flex flex-col items-center" onclick="event.stopPropagation()">
+            <button onclick="closeLightbox()" class="absolute -top-10 right-0 text-white hover:text-danger transition-colors cursor-pointer flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded bg-black/40">
+                <span class="material-symbols-outlined text-[18px]">close</span> Đóng (ESC)
+            </button>
+            <img id="lightboxImage" src="" class="max-w-full max-h-[82vh] rounded-lg shadow-2xl object-contain border border-white/10" />
+            <div id="lightboxCaption" class="mt-2 text-white/90 text-xs font-mono bg-black/70 px-3 py-1 rounded-full border border-white/10 truncate max-w-md"></div>
+        </div>
+    </div>
+    <!-- Status History / Changelog Modal -->
+    <div id="statusHistoryModal" class="fixed inset-0 bg-black/60 hidden z-50 flex items-center justify-center p-4 backdrop-blur-xs" onclick="closeStatusHistoryModal()">
+        <div class="bg-surface-container-lowest rounded-xl shadow-2xl w-full max-w-2xl p-6 border border-border animate-fade-in relative max-h-[85vh] flex flex-col" onclick="event.stopPropagation()">
+            <!-- Header -->
+            <div class="flex justify-between items-center mb-3 pb-3 border-b border-border shrink-0">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
+                        <span class="material-symbols-outlined text-[22px]">history</span>
+                    </div>
+                    <div>
+                        <h3 class="font-headline-sm text-base text-text-main font-semibold flex items-center gap-2">
+                            <span>Lịch sử thay đổi công việc</span>
+                            <span class="text-xs px-2 py-0.5 rounded-full bg-surface-container-high text-text-subtle font-mono" id="modalIssueKeyBadge"></span>
+                        </h3>
+                        <p class="text-xs text-text-subtle">Danh sách các cập nhật trạng thái, phân công, độ ưu tiên, deadline (Changelog)</p>
+                    </div>
+                </div>
+                <button onclick="closeStatusHistoryModal()" class="text-text-subtle hover:text-text-main cursor-pointer p-1.5 rounded-lg hover:bg-surface-container transition-colors">
+                    <span class="material-symbols-outlined text-[20px]">close</span>
+                </button>
+            </div>
+
+            <!-- Filter Tabs -->
+            <div class="flex items-center gap-1.5 mb-3 pb-2 border-b border-border/40 shrink-0 flex-wrap">
+                <button id="tabChangelog_ALL" onclick="setChangelogFilter('ALL')" class="px-2.5 py-1 rounded-md text-xs font-semibold bg-primary text-white shadow-xs transition-colors cursor-pointer">
+                    Tất cả
+                </button>
+                <button id="tabChangelog_STATUS" onclick="setChangelogFilter('STATUS')" class="px-2.5 py-1 rounded-md text-xs font-medium text-text-subtle hover:text-text-main hover:bg-surface-container transition-colors cursor-pointer">
+                    Trạng thái
+                </button>
+                <button id="tabChangelog_ASSIGNEE" onclick="setChangelogFilter('ASSIGNEE')" class="px-2.5 py-1 rounded-md text-xs font-medium text-text-subtle hover:text-text-main hover:bg-surface-container transition-colors cursor-pointer">
+                    Người phụ trách
+                </button>
+                <button id="tabChangelog_OTHER" onclick="setChangelogFilter('OTHER')" class="px-2.5 py-1 rounded-md text-xs font-medium text-text-subtle hover:text-text-main hover:bg-surface-container transition-colors cursor-pointer">
+                    Thông tin khác
+                </button>
+            </div>
+
+            <!-- Body / Content -->
+            <div id="statusHistoryModalBody" class="flex-1 overflow-y-auto pr-1">
+                <div id="statusHistoryList" class="space-y-3">
+                    <!-- Rendered by JS -->
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="mt-4 pt-3 border-t border-border flex justify-between items-center shrink-0 text-xs">
+                <div class="text-text-subtle" id="statusHistoryCountText"></div>
+                <button onclick="closeStatusHistoryModal()" class="px-4 py-2 font-semibold rounded-lg bg-surface-container-high hover:bg-surface-container-highest text-text-main transition-colors cursor-pointer">
+                    Đóng
+                </button>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

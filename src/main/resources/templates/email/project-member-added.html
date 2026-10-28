@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="vi">
+<head>
+    <meta charset="UTF-8"/>
+    <title>Bạn được thêm vào dự án</title>
+    <style>
+        body { font-family: Arial, sans-serif; background-color: #f4f4f4; margin: 0; padding: 0; }
+        .container { max-width: 600px; margin: 30px auto; background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        .header { background-color: #059669; padding: 24px; color: white; }
+        .header h1 { margin: 0; font-size: 22px; }
+        .body { padding: 28px; color: #333; line-height: 1.6; }
+        .project-card { background: #ecfdf5; border-left: 4px solid #059669; padding: 16px; border-radius: 4px; margin: 20px 0; }
+        .project-key { font-weight: bold; color: #059669; font-size: 16px; }
+        .role-badge { display: inline-block; background: #d1fae5; color: #065f46; padding: 4px 12px; border-radius: 12px; font-size: 13px; font-weight: bold; margin-top: 8px; }
+        .footer { background: #f9f9f9; padding: 16px 28px; font-size: 12px; color: #888; border-top: 1px solid #eee; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h1>🎉 Mini Jira – Thêm vào dự án</h1>
+    </div>
+    <div class="body">
+        <p>Xin chào <strong th:text="${recipientName}">Người dùng</strong>,</p>
+        <p>Bạn vừa được thêm vào dự án:</p>
+        <div class="project-card">
+            <div class="project-key" th:text="${projectKey}">PROJ</div>
+            <div th:text="${projectName}">Tên dự án</div>
+            <div>
+                <span class="role-badge" th:text="${roleName}">DEVELOPER</span>
+            </div>
+        </div>
+        <div style="margin: 24px 0; text-align: center;">
+            <a th:href="${projectUrl}" style="background-color: #059669; color: #ffffff; padding: 12px 28px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 14px; display: inline-block;">
+                Xem Dự Án →
+            </a>
+        </div>
+        <p style="font-size: 13px; color: #666; margin-top: 16px;">
+            Hoặc truy cập trực tiếp qua liên kết: <br/>
+            <a th:href="${projectUrl}" th:text="${projectUrl}" style="color: #059669; word-break: break-all;"></a>
+        </p>
+        <p>Trân trọng,<br/>Hệ thống Mini Jira</p>
+    </div>
+    <div class="footer">Email này được gửi tự động. Vui lòng không trả lời.</div>
+</div>
+</body>
+</html>

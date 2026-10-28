@@ -1,0 +1,1681 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Thống Kê Thời Gian Chuyển Trạng Thái - Mini Jira</title>
+    <link rel="stylesheet" href="css/style.css"/>
+    <script>
+        (function() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            if (savedTheme === 'dark') {
+                document.documentElement.classList.add('dark');
+                document.documentElement.setAttribute('data-theme', 'dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+                document.documentElement.setAttribute('data-theme', 'light');
+            }
+        })();
+    </script>
+    <!-- Tailwind CSS (CDN) -->
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <!-- Chart.js (CDN) -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Google Material Symbols -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        "background": "var(--bg-app)",
+                        "surface": "var(--surface-lowest)",
+                        "surface-container-lowest": "var(--surface-lowest)",
+                        "surface-container-low": "var(--surface-low)",
+                        "surface-container": "var(--surface-container)",
+                        "surface-container-high": "var(--surface-high)",
+                        "surface-container-highest": "var(--surface-highest)",
+                        "surface-variant": "var(--surface-variant)",
+                        "text-main": "var(--text-main)",
+                        "text-subtle": "var(--text-subtle)",
+                        "border": "var(--border-color)",
+                        "outline": "var(--outline)",
+                        "outline-variant": "var(--outline-variant)",
+                        "secondary-container": "var(--secondary-container)",
+                        "on-secondary-fixed": "var(--on-secondary-fixed)",
+                        "on-secondary-fixed-variant": "var(--on-secondary-fixed-variant)",
+                        "inverse-surface": "var(--surface-lowest)",
+                        "inverse-on-surface": "var(--text-main)",
+                        "on-background": "var(--text-main)",
+                        "on-surface": "var(--text-main)",
+                        
+                        "primary": "#0052CC",
+                        "primary-container": "#0747A6",
+                        "primary-fixed": "var(--primary-fixed)",
+                        "primary-fixed-dim": "var(--primary-fixed-dim)",
+                        "on-primary": "#ffffff",
+                        "surface-tint": "#0747A6",
+                        
+                        "success": "#36B37E",
+                        "warning": "#FFAB00",
+                        "danger": "#FF5630",
+                        "error": "#FF5630"
+                    },
+                    spacing: { "sidebar-width": "240px", "xs": "4px", "sm": "8px", "md": "16px", "lg": "24px", "xl": "48px" },
+                    fontFamily: {
+                        "headline-sm": ["Inter"], "label-sm": ["Inter"], "label-bold": ["Inter"], "display-lg": ["Inter"],
+                        "code": ["Inter"], "body-md": ["Inter"], "headline-md": ["Inter"], "body-lg": ["Inter"]
+                    },
+                    fontSize: {
+                        "headline-sm": ["20px", { "lineHeight": "28px", "fontWeight": "600" }],
+                        "label-sm": ["12px", { "lineHeight": "16px", "fontWeight": "400" }],
+                        "label-bold": ["12px", { "lineHeight": "16px", "fontWeight": "600" }],
+                        "display-lg": ["30px", { "lineHeight": "36px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "code": ["13px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }]
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { background-color: var(--bg-app); color: var(--text-main); }
+        .card-shadow { box-shadow: var(--shadow-sm); transition: box-shadow 0.2s ease-in-out; }
+        .card-shadow:hover { box-shadow: var(--shadow-md); }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 20; }
+
+        /* Dark mode native dropdown styling & readability */
+        :root { color-scheme: light; }
+        html.dark, body.dark, .dark, [data-theme="dark"] { color-scheme: dark; }
+
+        select {
+            color-scheme: light dark;
+        }
+
+        html.dark select, .dark select, [data-theme="dark"] select {
+            color-scheme: dark !important;
+            color: #F8FAFC !important;
+        }
+
+        select option {
+            background-color: #FFFFFF !important;
+            color: #172B4D !important;
+            padding: 6px 10px;
+        }
+
+        html.dark select option,
+        .dark select option,
+        [data-theme="dark"] select option {
+            background-color: #1E293B !important;
+            color: #F8FAFC !important;
+        }
+
+        html.dark select option:checked,
+        .dark select option:checked,
+        [data-theme="dark"] select option:checked {
+            background-color: #2563EB !important;
+            color: #FFFFFF !important;
+        }
+
+        html.dark select option:hover,
+        .dark select option:hover,
+        [data-theme="dark"] select option:hover {
+            background-color: #334155 !important;
+            color: #FFFFFF !important;
+        }
+    </style>
+</head>
+<body class="font-body-md text-body-md antialiased overflow-x-hidden bg-background text-text-main">
+
+    <!-- Modular Sidebar -->
+    <div id="appSidebar"></div>
+
+    <!-- Main Content -->
+    <main class="ml-sidebar-width p-xl bg-background min-h-screen">
+        <!-- Header with Switcher Tabs & Filter Toolbar -->
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-lg gap-4 pb-4 border-b border-border">
+            <div>
+                <h2 class="font-display-lg text-display-lg text-text-main mb-xs">Thống Kê Chuyển Trạng Thái</h2>
+                <p class="font-body-md text-body-md text-text-subtle">Phân tích chu kỳ xử lý, thời gian chuyển đổi theo giây và tỷ lệ rework giữa các trạng thái.</p>
+            </div>
+
+            <!-- Tab Switcher (Chuyển đổi giữa Thống kê dự án và Thời gian chuyển trạng thái) -->
+            <div class="inline-flex items-center p-1 bg-surface-container-low border border-border rounded-xl self-start sm:self-auto shrink-0 shadow-2xs">
+                <a href="dashboard.html" class="flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-semibold text-text-subtle hover:text-text-main hover:bg-surface-container-lowest transition-all">
+                    <span class="material-symbols-outlined text-[18px]">bar_chart</span>
+                    <span>Thống kê dự án</span>
+                </a>
+                <a href="transitions.html" class="flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-semibold bg-primary text-white shadow-xs transition-all">
+                    <span class="material-symbols-outlined text-[18px]">timelapse</span>
+                    <span>Thời gian chuyển trạng thái</span>
+                </a>
+            </div>
+        </div>
+
+        <!-- ========================================================================= -->
+        <!-- KHỐI THỐNG KÊ 6 CHỈ SỐ THỜI GIAN CHUYỂN TRẠNG THÁI (TRANSITION ANALYTICS) -->
+        <!-- ========================================================================= -->
+        <div id="transitionMetricsSection" class="mb-lg">
+            <!-- Header Section with Unified Filter Controls (Gộp Dự án/Phạm vi + Thời gian + Badges) -->
+            <div class="flex flex-col lg:flex-row justify-between lg:items-center mb-md gap-4 bg-surface-container-lowest p-md sm:p-lg rounded-xl border border-border card-shadow">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                        <span class="material-symbols-outlined text-[24px]">timelapse</span>
+                    </div>
+                    <div>
+                        <h3 class="font-headline-sm text-lg text-text-main flex items-center gap-2 flex-wrap">
+                            <span>Chu Kỳ & Thời Gian Chuyển Trạng Thái</span>
+                            <span id="targetProjectBadge" class="text-xs bg-primary/10 text-primary font-semibold px-2.5 py-0.5 rounded-full border border-primary/20">
+                                Toàn bộ dự án
+                            </span>
+                        </h3>
+                        <p class="text-xs text-text-subtle mt-0.5">Thời gian xử lý trung bình (tính theo giây) và tần suất chuyển đổi giữa các trạng thái công việc</p>
+                    </div>
+                </div>
+
+                <!-- Unified Controls: Dropdown Dự án/Phạm vi + Dropdown Thời gian + Badges + Reset -->
+                <div class="flex items-center gap-2.5 flex-wrap">
+                    <!-- Dropdown Gộp: Dự Án / Phạm Vi -->
+                    <div class="flex items-center gap-2 bg-surface-container-low border border-border rounded-lg px-3 py-1.5 shadow-2xs hover:border-primary/50 transition-colors">
+                        <span class="material-symbols-outlined text-[18px] text-primary">account_tree</span>
+                        <label for="filterProjectOrScope" class="text-xs font-bold text-text-subtle uppercase tracking-wide">Dự án:</label>
+                        <select id="filterProjectOrScope" onchange="onUnifiedProjectOrScopeChange()" class="bg-transparent text-xs font-semibold text-text-main outline-none cursor-pointer border-none p-0 focus:ring-0 max-w-[220px] truncate">
+                            <optgroup label="── Phạm vi tổng hợp ──">
+                                <option value="SCOPE_ALL" selected class="bg-white text-slate-800 dark:bg-slate-800 dark:text-slate-100">Tất cả dự án của tôi</option>
+                                <option value="SCOPE_MANAGED" class="bg-white text-slate-800 dark:bg-slate-800 dark:text-slate-100">Dự án tôi quản lý (PM)</option>
+                                <option value="SCOPE_ASSIGNED" class="bg-white text-slate-800 dark:bg-slate-800 dark:text-slate-100">Dự án có việc của tôi</option>
+                            </optgroup>
+                        </select>
+                    </div>
+
+                    <!-- Dropdown Thời Gian -->
+                    <div class="flex items-center gap-2 bg-surface-container-low border border-border rounded-lg px-3 py-1.5 shadow-2xs hover:border-primary/50 transition-colors">
+                        <span class="material-symbols-outlined text-[18px] text-primary">calendar_today</span>
+                        <label for="filterTimeRangeSelect" class="text-xs font-bold text-text-subtle uppercase tracking-wide">Thời gian:</label>
+                        <select id="filterTimeRangeSelect" onchange="onTransitionTimeRangeChange()" class="bg-transparent text-xs font-semibold text-text-main outline-none cursor-pointer border-none p-0 focus:ring-0">
+                            <option value="ALL_TIME" selected class="bg-white text-slate-800 dark:bg-slate-800 dark:text-slate-100">Toàn bộ thời gian</option>
+                            <option value="THIS_WEEK" class="bg-white text-slate-800 dark:bg-slate-800 dark:text-slate-100">Tuần này</option>
+                            <option value="THIS_MONTH" class="bg-white text-slate-800 dark:bg-slate-800 dark:text-slate-100">Tháng này</option>
+                            <option value="THIS_QUARTER" class="bg-white text-slate-800 dark:bg-slate-800 dark:text-slate-100">Quý này</option>
+                        </select>
+                    </div>
+
+                    <!-- Badges Tổng hợp -->
+                    <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface-container-low border border-border text-xs">
+                        <span class="text-text-subtle">Tổng lượt:</span>
+                        <span id="statTotalTransitions" class="font-bold text-primary font-mono">...</span>
+                    </div>
+                    <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface-container-low border border-border text-xs" title="Tỷ lệ issue bị trả về hoặc mở lại">
+                        <span class="text-text-subtle">Tỷ lệ Rework:</span>
+                        <span id="statReworkRate" class="font-bold text-amber-600 dark:text-amber-400 font-mono">...%</span>
+                    </div>
+
+                    <!-- Reset button -->
+                    <button id="btnResetFilters" type="button" onclick="resetUnifiedFilters()" class="hidden px-2.5 py-1.5 text-xs text-text-subtle hover:text-text-main hover:bg-surface-container-low border border-border rounded-lg transition-colors cursor-pointer items-center gap-1" title="Đặt lại bộ lọc về mặc định">
+                        <span class="material-symbols-outlined text-[16px]">restart_alt</span>
+                        <span>Đặt lại</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- 6 Ô KPI Cards (3 Ô Xuôi, 3 Ô Ngược) -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-md mb-lg">
+                <!-- 1. TODO -> IN_PROGRESS -->
+                <div class="bg-surface-container-lowest p-md rounded-xl border border-border card-shadow flex flex-col justify-between relative overflow-hidden group hover:border-sky-500/40 transition-all">
+                    <div class="absolute top-0 left-0 w-1 h-full bg-sky-500"></div>
+                    <div>
+                        <div class="flex justify-between items-start mb-2">
+                            <div>
+                                <div class="flex items-center gap-1.5">
+                                    <span class="text-xs font-bold text-sky-600 dark:text-sky-400 uppercase tracking-wide">TODO → IN PROGRESS</span>
+                                </div>
+                                <div class="text-[11px] text-text-subtle mt-0.5">Chờ bắt đầu (Lead Time)</div>
+                            </div>
+                            <span class="material-symbols-outlined text-sky-500 text-[20px]">play_circle</span>
+                        </div>
+                        <div class="my-2">
+                            <span id="statTodoToProgressAvg" class="font-display-lg text-2xl font-bold text-text-main block">...</span>
+                        </div>
+                    </div>
+                    <div class="pt-2 border-t border-border/60 flex items-center justify-between text-xs text-text-subtle">
+                        <span title="Mốc thời gian trung bình tính trên các dự án liên quan đến bạn (hoặc toàn hệ thống đối với Quản trị viên)">Toàn HT: <strong id="statTodoToProgressSystem" class="text-text-main font-semibold">...</strong></span>
+                        <span id="statTodoToProgressCount" class="font-mono bg-sky-500/10 text-sky-600 dark:text-sky-400 px-2 py-0.5 rounded text-[11px] font-semibold">... lượt</span>
+                    </div>
+                </div>
+
+                <!-- 2. IN_PROGRESS -> REVIEW -->
+                <div class="bg-surface-container-lowest p-md rounded-xl border border-border card-shadow flex flex-col justify-between relative overflow-hidden group hover:border-indigo-500/40 transition-all">
+                    <div class="absolute top-0 left-0 w-1 h-full bg-indigo-500"></div>
+                    <div>
+                        <div class="flex justify-between items-start mb-2">
+                            <div>
+                                <div class="flex items-center gap-1.5">
+                                    <span class="text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wide">IN PROGRESS → REVIEW</span>
+                                </div>
+                                <div class="text-[11px] text-text-subtle mt-0.5">Viết code & Nộp review</div>
+                            </div>
+                            <span class="material-symbols-outlined text-indigo-500 text-[20px]">code</span>
+                        </div>
+                        <div class="my-2">
+                            <span id="statProgressToReviewAvg" class="font-display-lg text-2xl font-bold text-text-main block">...</span>
+                        </div>
+                    </div>
+                    <div class="pt-2 border-t border-border/60 flex items-center justify-between text-xs text-text-subtle">
+                        <span title="Mốc thời gian trung bình tính trên các dự án liên quan đến bạn (hoặc toàn hệ thống đối với Quản trị viên)">Toàn HT: <strong id="statProgressToReviewSystem" class="text-text-main font-semibold">...</strong></span>
+                        <span id="statProgressToReviewCount" class="font-mono bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 px-2 py-0.5 rounded text-[11px] font-semibold">... lượt</span>
+                    </div>
+                </div>
+
+                <!-- 3. REVIEW -> DONE -->
+                <div class="bg-surface-container-lowest p-md rounded-xl border border-border card-shadow flex flex-col justify-between relative overflow-hidden group hover:border-success/40 transition-all">
+                    <div class="absolute top-0 left-0 w-1 h-full bg-success"></div>
+                    <div>
+                        <div class="flex justify-between items-start mb-2">
+                            <div>
+                                <div class="flex items-center gap-1.5">
+                                    <span class="text-xs font-bold text-success uppercase tracking-wide">REVIEW → DONE</span>
+                                </div>
+                                <div class="text-[11px] text-text-subtle mt-0.5">Kiểm thử QA & Nghiệm thu</div>
+                            </div>
+                            <span class="material-symbols-outlined text-success text-[20px]">task_alt</span>
+                        </div>
+                        <div class="my-2">
+                            <span id="statReviewToDoneAvg" class="font-display-lg text-2xl font-bold text-text-main block">...</span>
+                        </div>
+                    </div>
+                    <div class="pt-2 border-t border-border/60 flex items-center justify-between text-xs text-text-subtle">
+                        <span title="Mốc thời gian trung bình tính trên các dự án liên quan đến bạn (hoặc toàn hệ thống đối với Quản trị viên)">Toàn HT: <strong id="statReviewToDoneSystem" class="text-text-main font-semibold">...</strong></span>
+                        <span id="statReviewToDoneCount" class="font-mono bg-success/15 text-success px-2 py-0.5 rounded text-[11px] font-semibold">... lượt</span>
+                    </div>
+                </div>
+
+                <!-- 4. DONE -> REVIEW (Reopen) -->
+                <div class="bg-surface-container-lowest p-md rounded-xl border border-border card-shadow flex flex-col justify-between relative overflow-hidden group hover:border-amber-500/40 transition-all">
+                    <div class="absolute top-0 left-0 w-1 h-full bg-amber-500"></div>
+                    <div>
+                        <div class="flex justify-between items-start mb-2">
+                            <div>
+                                <div class="flex items-center gap-1.5">
+                                    <span class="text-xs font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wide">DONE → REVIEW</span>
+                                </div>
+                                <div class="text-[11px] text-text-subtle mt-0.5">Mở lại task (Reopen)</div>
+                            </div>
+                            <span class="material-symbols-outlined text-amber-500 text-[20px]">replay</span>
+                        </div>
+                        <div class="my-2">
+                            <span id="statDoneToReviewAvg" class="font-display-lg text-2xl font-bold text-text-main block">...</span>
+                        </div>
+                    </div>
+                    <div class="pt-2 border-t border-border/60 flex items-center justify-between text-xs text-text-subtle">
+                        <span title="Mốc thời gian trung bình tính trên các dự án liên quan đến bạn (hoặc toàn hệ thống đối với Quản trị viên)">Toàn HT: <strong id="statDoneToReviewSystem" class="text-text-main font-semibold">...</strong></span>
+                        <span id="statDoneToReviewCount" class="font-mono bg-amber-500/10 text-amber-600 dark:text-amber-400 px-2 py-0.5 rounded text-[11px] font-semibold">... lượt</span>
+                    </div>
+                </div>
+
+                <!-- 5. REVIEW -> IN_PROGRESS (Rework) -->
+                <div class="bg-surface-container-lowest p-md rounded-xl border border-border card-shadow flex flex-col justify-between relative overflow-hidden group hover:border-rose-500/40 transition-all">
+                    <div class="absolute top-0 left-0 w-1 h-full bg-rose-500"></div>
+                    <div>
+                        <div class="flex justify-between items-start mb-2">
+                            <div>
+                                <div class="flex items-center gap-1.5">
+                                    <span class="text-xs font-bold text-rose-600 dark:text-rose-400 uppercase tracking-wide">REVIEW → IN PROGRESS</span>
+                                </div>
+                                <div class="text-[11px] text-text-subtle mt-0.5">Yêu cầu sửa lại (Rework / Reject)</div>
+                            </div>
+                            <span class="material-symbols-outlined text-rose-500 text-[20px]">keyboard_return</span>
+                        </div>
+                        <div class="my-2">
+                            <span id="statReviewToProgressAvg" class="font-display-lg text-2xl font-bold text-text-main block">...</span>
+                        </div>
+                    </div>
+                    <div class="pt-2 border-t border-border/60 flex items-center justify-between text-xs text-text-subtle">
+                        <span title="Mốc thời gian trung bình tính trên các dự án liên quan đến bạn (hoặc toàn hệ thống đối với Quản trị viên)">Toàn HT: <strong id="statReviewToProgressSystem" class="text-text-main font-semibold">...</strong></span>
+                        <span id="statReviewToProgressCount" class="font-mono bg-rose-500/10 text-rose-600 dark:text-rose-400 px-2 py-0.5 rounded text-[11px] font-semibold">... lượt</span>
+                    </div>
+                </div>
+
+                <!-- 6. IN_PROGRESS -> TODO (Pause) -->
+                <div class="bg-surface-container-lowest p-md rounded-xl border border-border card-shadow flex flex-col justify-between relative overflow-hidden group hover:border-slate-500/40 transition-all">
+                    <div class="absolute top-0 left-0 w-1 h-full bg-slate-500"></div>
+                    <div>
+                        <div class="flex justify-between items-start mb-2">
+                            <div>
+                                <div class="flex items-center gap-1.5">
+                                    <span class="text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wide">IN PROGRESS → TODO</span>
+                                </div>
+                                <div class="text-[11px] text-text-subtle mt-0.5">Tạm hoãn / Trả về TODO</div>
+                            </div>
+                            <span class="material-symbols-outlined text-slate-500 text-[20px]">pause_circle</span>
+                        </div>
+                        <div class="my-2">
+                            <span id="statProgressToTodoAvg" class="font-display-lg text-2xl font-bold text-text-main block">...</span>
+                        </div>
+                    </div>
+                    <div class="pt-2 border-t border-border/60 flex items-center justify-between text-xs text-text-subtle">
+                        <span title="Mốc thời gian trung bình tính trên các dự án liên quan đến bạn (hoặc toàn hệ thống đối với Quản trị viên)">Toàn HT: <strong id="statProgressToTodoSystem" class="text-text-main font-semibold">...</strong></span>
+                        <span id="statProgressToTodoCount" class="font-mono bg-slate-500/10 text-slate-600 dark:text-slate-400 px-2 py-0.5 rounded text-[11px] font-semibold">... lượt</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Biểu Đồ Xu Hướng Chuyển Trạng Thái Theo Tháng (Line Chart) -->
+            <div class="bg-surface-container-lowest p-lg rounded-xl border border-border card-shadow mb-lg">
+                <div class="flex flex-col sm:flex-row justify-between sm:items-center mb-md gap-3">
+                    <div>
+                        <h3 class="font-headline-sm text-base text-text-main flex items-center gap-2">
+                            <span class="material-symbols-outlined text-primary text-[22px]">trending_up</span>
+                            <span>Xu Hướng Thời Gian Chuyển Trạng Thái Theo Tháng</span>
+                        </h3>
+                        <p class="text-xs text-text-subtle mt-0.5">So sánh thời gian trung bình qua từng tháng (tính theo giây)</p>
+                    </div>
+
+                    <!-- Controls Khoảng thời gian cho Biểu đồ (Preset + Custom Date Range) -->
+                    <div class="flex items-center gap-2 flex-wrap self-start sm:self-auto">
+                        <!-- Dropdown Chọn nhanh (Presets) -->
+                        <div class="flex items-center gap-1.5 bg-surface-container-low border border-border rounded-lg px-2.5 py-1.5 text-xs shadow-2xs hover:border-primary/50 transition-colors">
+                            <span class="material-symbols-outlined text-[16px] text-primary">schedule</span>
+                            <label for="trendPresetSelect" class="text-[11px] font-bold text-text-subtle uppercase tracking-wide">Khoảng thời gian:</label>
+                            <select id="trendPresetSelect" onchange="onTrendPresetChange(this.value)" class="bg-transparent border-none outline-none text-xs text-text-main font-semibold cursor-pointer p-0 focus:ring-0">
+                                <option value="1" class="bg-white text-slate-800 dark:bg-slate-800 dark:text-slate-100">1 tháng gần nhất</option>
+                                <option value="3" class="bg-white text-slate-800 dark:bg-slate-800 dark:text-slate-100">3 tháng gần nhất</option>
+                                <option value="6" selected class="bg-white text-slate-800 dark:bg-slate-800 dark:text-slate-100">6 tháng gần nhất</option>
+                                <option value="12" class="bg-white text-slate-800 dark:bg-slate-800 dark:text-slate-100">12 tháng gần nhất</option>
+                                <option value="24" class="bg-white text-slate-800 dark:bg-slate-800 dark:text-slate-100">24 tháng gần nhất</option>
+                                <option value="YTD" class="bg-white text-slate-800 dark:bg-slate-800 dark:text-slate-100">Từ đầu năm (Năm nay)</option>
+                                <option value="CUSTOM" class="bg-white text-slate-800 dark:bg-slate-800 dark:text-slate-100 font-bold text-primary">Tùy chỉnh ngày (A → B)...</option>
+                            </select>
+                        </div>
+
+                        <!-- Cụm chọn ngày tùy chỉnh (Hiện khi chọn "CUSTOM") -->
+                        <div id="trendCustomDateContainer" class="hidden items-center gap-1.5 bg-surface-container-low border border-border rounded-lg px-2.5 py-1.5 text-xs shadow-2xs">
+                            <span class="material-symbols-outlined text-[16px] text-primary">calendar_month</span>
+                            <span class="text-[11px] font-bold text-text-subtle uppercase tracking-wide">Từ:</span>
+                            <input type="date" id="trendStartDate" onchange="onTrendCustomDateChange()" class="bg-transparent border-none outline-none text-xs text-text-main p-0 focus:ring-0 cursor-pointer" title="Chọn ngày bắt đầu">
+                            <span class="text-text-subtle text-xs font-semibold px-0.5">đến</span>
+                            <input type="date" id="trendEndDate" onchange="onTrendCustomDateChange()" class="bg-transparent border-none outline-none text-xs text-text-main p-0 focus:ring-0 cursor-pointer" title="Chọn ngày kết thúc">
+                            <button type="button" onclick="loadMonthlyTransitionTrends()" class="px-2 py-0.5 rounded bg-primary text-white text-xs font-medium hover:bg-primary/90 transition-colors cursor-pointer" title="Áp dụng khoảng ngày">
+                                Lọc
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="relative w-full h-[320px] flex items-center justify-center">
+                    <canvas id="transitionTrendChart" class="w-full h-full"></canvas>
+                    <div id="trendChartEmptyState" class="hidden absolute inset-0 flex flex-col items-center justify-center text-text-subtle">
+                        <span class="material-symbols-outlined text-4xl mb-2 opacity-50">show_chart</span>
+                        <span class="text-sm font-medium">Chưa có dữ liệu chuyển trạng thái theo tháng</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bảng Chi Tiết Danh Sách Các Lần Chuyển Trạng Thái Issue -->
+            <div class="bg-surface-container-lowest rounded-xl border border-border card-shadow overflow-hidden">
+                <div class="p-md sm:p-lg border-b border-border flex flex-col gap-4">
+                    <!-- Title & Badge -->
+                    <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-2">
+                        <div>
+                            <h3 class="font-headline-sm text-base text-text-main flex items-center gap-2">
+                                <span class="material-symbols-outlined text-primary text-[22px]">history</span>
+                                <span>Lịch Sử Các Lần Chuyển Trạng Thái Issue</span>
+                            </h3>
+                            <p class="text-xs text-text-subtle mt-0.5">Nhật ký chi tiết các lần phát sinh chuyển đổi trạng thái issue, thời gian xử lý và người thực hiện</p>
+                        </div>
+                        <span id="transitionLogCountBadge" class="self-start sm:self-auto text-xs bg-primary/10 text-primary font-semibold px-2.5 py-1 rounded-full border border-primary/20">
+                            0 lượt chuyển
+                        </span>
+                    </div>
+
+                    <!-- Toolbar Filters (Project, Performer, Date A -> B, 6 Steps, Search, Reset) -->
+                    <div class="flex items-center gap-2.5 flex-wrap pt-3 border-t border-border/60">
+                        <!-- 1. Dropdown Dự án (Project) -->
+                        <div class="flex items-center gap-1.5 bg-surface-container-low border border-border rounded-lg px-2.5 py-1.5 text-xs shadow-2xs hover:border-primary/50 transition-colors">
+                            <span class="material-symbols-outlined text-[16px] text-primary">folder_open</span>
+                            <label for="logProjectFilter" class="text-[11px] font-bold text-text-subtle uppercase tracking-wide">Dự án:</label>
+                            <select id="logProjectFilter" onchange="onLogProjectFilterChange()" class="bg-transparent border-none outline-none text-xs text-text-main font-semibold cursor-pointer p-0 focus:ring-0 max-w-[170px] truncate">
+                                <option value="" class="bg-white text-slate-800 dark:bg-slate-800 dark:text-slate-100">Tất cả dự án liên quan</option>
+                            </select>
+                        </div>
+
+                        <!-- 2. Dropdown Người thực hiện (Searchable Combobox) -->
+                        <div class="relative" id="performerDropdownWrapper">
+                            <button type="button" id="performerSelectBtn" onclick="togglePerformerDropdown(event)"
+                                class="flex items-center gap-1.5 bg-surface-container-low border border-border rounded-lg px-2.5 py-1.5 text-xs shadow-2xs hover:border-primary/50 transition-colors cursor-pointer max-w-[210px]"
+                                title="Lọc theo người thực hiện">
+                                <span class="material-symbols-outlined text-[16px] text-primary shrink-0">person</span>
+                                <span class="text-[11px] font-bold text-text-subtle uppercase tracking-wide shrink-0">Người:</span>
+                                <span id="performerSelectedLabel" class="font-semibold text-text-main truncate text-xs">Tất cả</span>
+                                <span id="performerClearBtn" onclick="clearPerformerSelection(event)" class="hidden material-symbols-outlined text-[14px] text-text-subtle hover:text-danger ml-0.5 shrink-0" title="Bỏ chọn">close</span>
+                                <span class="material-symbols-outlined text-[16px] text-text-subtle shrink-0">expand_more</span>
+                            </button>
+
+                            <!-- Popover Menu -->
+                            <div id="performerDropdownMenu" class="hidden absolute left-0 top-full mt-1.5 w-72 bg-surface-container-lowest border border-border rounded-xl shadow-xl z-50 p-2 text-xs">
+                                <!-- Ô tìm kiếm user bên trong dropdown -->
+                                <div class="flex items-center gap-1.5 bg-surface-container-low border border-border rounded-lg px-2 py-1.5 mb-2">
+                                    <span class="material-symbols-outlined text-[15px] text-text-subtle shrink-0">search</span>
+                                    <input type="text" id="performerSearchInput" oninput="filterPerformerList()" placeholder="Tìm theo tên hoặc email..."
+                                        class="bg-transparent border-none outline-none text-xs text-text-main placeholder-text-subtle w-full p-0 focus:ring-0">
+                                    <span id="performerSearchClear" onclick="clearPerformerSearchInput()" class="hidden material-symbols-outlined text-[14px] text-text-subtle hover:text-text-main cursor-pointer">close</span>
+                                </div>
+
+                                <!-- Quick items: Tất cả & Chính tôi -->
+                                <div class="space-y-0.5 border-b border-border/60 pb-1 mb-1">
+                                    <div onclick="selectPerformer('')" class="flex items-center justify-between px-2 py-1.5 rounded-lg hover:bg-surface-container-low cursor-pointer transition-colors text-text-main">
+                                        <span class="font-medium">Tất cả người thực hiện</span>
+                                        <span id="performerCheckAll" class="material-symbols-outlined text-[16px] text-primary">check</span>
+                                    </div>
+                                    <div onclick="selectPerformer('ME')" class="flex items-center justify-between px-2 py-1.5 rounded-lg hover:bg-surface-container-low cursor-pointer transition-colors text-text-main">
+                                        <div class="flex items-center gap-2">
+                                            <span class="material-symbols-outlined text-[16px] text-primary">account_circle</span>
+                                            <span class="font-medium">Chính tôi</span>
+                                        </div>
+                                        <span id="performerCheckMe" class="hidden material-symbols-outlined text-[16px] text-primary">check</span>
+                                    </div>
+                                </div>
+
+                                <!-- Scrollable user list with avatar, name & email -->
+                                <div id="performerListContainer" class="max-h-52 overflow-y-auto space-y-0.5 pr-0.5">
+                                    <!-- Dynamic users -->
+                                </div>
+
+                                <div id="performerEmptyNotice" class="hidden py-4 text-center text-text-subtle text-[11px]">
+                                    Không tìm thấy thành viên phù hợp
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 3. Date Range: Ngày A - Ngày B -->
+                        <div class="flex items-center gap-1.5 bg-surface-container-low border border-border rounded-lg px-2.5 py-1.5 text-xs shadow-2xs">
+                            <span class="material-symbols-outlined text-[16px] text-primary">calendar_month</span>
+                            <span class="text-[11px] font-bold text-text-subtle uppercase tracking-wide">Từ:</span>
+                            <input type="date" id="logStartDateFilter" onchange="onLogFilterChange()" class="bg-transparent border-none outline-none text-xs text-text-main p-0 focus:ring-0 cursor-pointer" title="Chọn ngày bắt đầu">
+                            <span class="text-text-subtle text-xs font-semibold px-0.5">đến</span>
+                            <input type="date" id="logEndDateFilter" onchange="onLogFilterChange()" class="bg-transparent border-none outline-none text-xs text-text-main p-0 focus:ring-0 cursor-pointer" title="Chọn ngày kết thúc">
+                        </div>
+
+                        <!-- 4. Dropdown Lọc 6 Bước Chuyển Trạng Thái -->
+                        <div class="flex items-center gap-1.5 bg-surface-container-low border border-border rounded-lg px-2.5 py-1.5 text-xs shadow-2xs hover:border-primary/50 transition-colors">
+                            <span class="material-symbols-outlined text-[16px] text-primary">swap_horiz</span>
+                            <label for="logStepFilter" class="text-[11px] font-bold text-text-subtle uppercase tracking-wide">Bước:</label>
+                            <select id="logStepFilter" onchange="onLogFilterChange()" class="bg-transparent border-none outline-none text-xs text-text-main font-semibold cursor-pointer p-0 focus:ring-0">
+                                <option value="" class="bg-white text-slate-800 dark:bg-slate-800 dark:text-slate-100">Tất cả 6 bước</option>
+                                <option value="TODO->IN_PROGRESS" class="bg-white text-slate-800 dark:bg-slate-800 dark:text-slate-100">TODO → IN PROGRESS (Chờ bắt đầu)</option>
+                                <option value="IN_PROGRESS->REVIEW" class="bg-white text-slate-800 dark:bg-slate-800 dark:text-slate-100">IN PROGRESS → REVIEW (Viết code)</option>
+                                <option value="REVIEW->DONE" class="bg-white text-slate-800 dark:bg-slate-800 dark:text-slate-100">REVIEW → DONE (Kiểm thử QA)</option>
+                                <option value="DONE->REVIEW" class="bg-white text-slate-800 dark:bg-slate-800 dark:text-slate-100">DONE → REVIEW (Mở lại / Reopen)</option>
+                                <option value="REVIEW->IN_PROGRESS" class="bg-white text-slate-800 dark:bg-slate-800 dark:text-slate-100">REVIEW → IN PROGRESS (Sửa lỗi / Rework)</option>
+                                <option value="IN_PROGRESS->TODO" class="bg-white text-slate-800 dark:bg-slate-800 dark:text-slate-100">IN PROGRESS → TODO (Tạm hoãn / Pause)</option>
+                            </select>
+                        </div>
+
+                        <!-- 5. Search Issue Key / Title -->
+                        <div class="flex items-center gap-1.5 bg-surface-container-low border border-border rounded-lg px-2.5 py-1.5 text-xs shadow-2xs flex-1 min-w-[150px]">
+                            <span class="material-symbols-outlined text-[16px] text-text-subtle">search</span>
+                            <input type="text" id="logSearchInput" oninput="debounceLogSearch()" placeholder="Tìm theo mã hoặc tiêu đề issue..." class="bg-transparent border-none outline-none text-xs text-text-main placeholder-text-subtle w-full p-0 focus:ring-0">
+                        </div>
+
+                        <!-- 6. Reset Filter Button -->
+                        <button type="button" id="btnResetLogFilters" onclick="resetLogFilters()" class="px-2.5 py-1.5 rounded-lg border border-border text-xs text-text-subtle hover:text-text-main hover:bg-surface-container-low transition-colors cursor-pointer flex items-center gap-1 shrink-0" title="Đặt lại bộ lọc nhật ký">
+                            <span class="material-symbols-outlined text-[16px]">restart_alt</span>
+                            <span>Đặt lại</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse table-fixed">
+                        <thead>
+                            <tr class="border-b border-border bg-surface-container-low text-xs font-bold text-text-subtle uppercase tracking-wider">
+                                <th onclick="toggleLogSort('issue.issueKey')" class="py-2.5 px-3 w-[11%] cursor-pointer hover:text-primary transition-colors select-none" title="Bấm để sắp xếp theo Mã Issue">
+                                    <div class="inline-flex items-center gap-1">
+                                        <span>Mã Issue</span>
+                                        <span id="sortIcon_issue_issueKey" class="material-symbols-outlined text-[14px] opacity-40">unfold_more</span>
+                                    </div>
+                                </th>
+                                <th onclick="toggleLogSort('issue.title')" class="py-2.5 px-3 w-[24%] cursor-pointer hover:text-primary transition-colors select-none" title="Bấm để sắp xếp theo Tiêu đề">
+                                    <div class="inline-flex items-center gap-1">
+                                        <span>Tiêu đề</span>
+                                        <span id="sortIcon_issue_title" class="material-symbols-outlined text-[14px] opacity-40">unfold_more</span>
+                                    </div>
+                                </th>
+                                <th onclick="toggleLogSort('issue.project.name')" class="py-2.5 px-3 w-[13%] cursor-pointer hover:text-primary transition-colors select-none" title="Bấm để sắp xếp theo Dự án">
+                                    <div class="inline-flex items-center gap-1">
+                                        <span>Dự án</span>
+                                        <span id="sortIcon_issue_project_name" class="material-symbols-outlined text-[14px] opacity-40">unfold_more</span>
+                                    </div>
+                                </th>
+                                <th class="py-2.5 px-3 w-[18%]">Bước chuyển</th>
+                                <th onclick="toggleLogSort('transitionTimeMinutes')" class="py-2.5 px-3 w-[11%] text-center cursor-pointer hover:text-primary transition-colors select-none" title="Bấm để sắp xếp theo Thời gian xử lý">
+                                    <div class="inline-flex items-center justify-center gap-1">
+                                        <span>Thời gian</span>
+                                        <span id="sortIcon_transitionTimeMinutes" class="material-symbols-outlined text-[14px] opacity-40">unfold_more</span>
+                                    </div>
+                                </th>
+                                <th class="py-2.5 px-3 w-[11%]">Thực hiện</th>
+                                <th onclick="toggleLogSort('changedAt')" class="py-2.5 px-3 w-[12%] text-right cursor-pointer hover:text-primary transition-colors select-none" title="Bấm để sắp xếp theo Thời điểm">
+                                    <div class="inline-flex items-center justify-end gap-1">
+                                        <span>Thời điểm</span>
+                                        <span id="sortIcon_changedAt" class="material-symbols-outlined text-[14px] text-primary font-bold">arrow_downward</span>
+                                    </div>
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody id="transitionLogTableBody" class="divide-y divide-border text-sm">
+                            <tr>
+                                <td colspan="7" class="py-8 text-center text-text-subtle">
+                                    <span class="material-symbols-outlined animate-spin text-2xl mb-2">progress_activity</span>
+                                    <div class="text-xs">Đang tải lịch sử chuyển trạng thái...</div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Phân Trang Table -->
+                <div class="p-md border-t border-border flex flex-col sm:flex-row items-center justify-between gap-4 bg-surface-container-lowest">
+                    <div class="flex items-center gap-3 text-xs text-text-subtle">
+                        <span id="logPaginationInfo">Hiển thị 0-0 trên 0</span>
+                        <select id="logPageSizeSelect" onchange="onLogPageSizeChange(this.value)" class="border border-border rounded-lg px-2 py-1 bg-surface-container-low text-text-main text-xs outline-none cursor-pointer">
+                            <option value="10" selected>10 / trang</option>
+                            <option value="20">20 / trang</option>
+                            <option value="50">50 / trang</option>
+                        </select>
+                    </div>
+                    <div id="logPaginationControls" class="flex items-center gap-1"></div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="js/i18n.js?v=4"></script>
+    <script src="js/app.js?v=7"></script>
+    <script src="js/sidebar.js?v=5"></script>
+    <script>
+        if (!Auth.isAuthenticated()) window.location.href = 'login.html';
+
+        let transitionTrendChart = null;
+
+        // Filter state
+        let currentScope = 'ALL';
+        let currentProjectId = '';
+        let currentTimeRange = 'ALL_TIME';
+
+        // Issue transition log table state
+        let currentLogPage = 1;
+        let logPageSize = 10;
+        let totalLogPages = 1;
+        let totalLogElements = 0;
+        let currentLogProjectId = '';
+        let currentLogPerformerId = '';
+        let currentLogStartDate = '';
+        let currentLogEndDate = '';
+        let currentLogStep = '';
+        let logSearchTerm = '';
+        let logSearchDebounceTimer = null;
+        let logSortField = 'changedAt';
+        let logSortDir = 'desc';
+
+        // Performer list cache
+        let cachedPerformers = [];
+
+        function getChartThemeColors() {
+            const isDark = document.documentElement.classList.contains('dark');
+            return {
+                text: isDark ? '#94a3b8' : '#64748b',
+                grid: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.06)',
+                border: isDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.1)'
+            };
+        }
+
+        /**
+         * Định dạng thời gian theo giây sang định dạng trực quan:
+         * 45s, 1m 20s, 2h 15m, 1d 4h
+         */
+        function formatDurationSeconds(val) {
+            if (!val || val <= 0) return '0s';
+            const totalSecs = Math.round(val);
+            const d = Math.floor(totalSecs / 86400);
+            const h = Math.floor((totalSecs % 86400) / 3600);
+            const m = Math.floor((totalSecs % 3600) / 60);
+            const s = totalSecs % 60;
+            if (d > 0) return `${d}d ${h}h`;
+            if (h > 0) return m > 0 ? `${h}h ${m}m` : `${h}h`;
+            if (m > 0) return s > 0 ? `${m}m ${s}s` : `${m}m`;
+            return `${s}s`;
+        }
+
+        // =========================================================================
+        // FILTER EVENT HANDLERS
+        // =========================================================================
+
+        function onUnifiedProjectOrScopeChange() {
+            const select = document.getElementById('filterProjectOrScope');
+            const val = select ? select.value : 'SCOPE_ALL';
+
+            if (val.startsWith('SCOPE_')) {
+                currentScope = val.replace('SCOPE_', '');
+                currentProjectId = '';
+            } else {
+                currentScope = 'ALL';
+                currentProjectId = val;
+            }
+
+            updateUnifiedResetBtn();
+            loadTransitionSummary();
+            loadMonthlyTransitionTrends();
+        }
+
+        function onTransitionTimeRangeChange() {
+            const timeEl = document.getElementById('filterTimeRangeSelect');
+            currentTimeRange = timeEl ? timeEl.value : 'ALL_TIME';
+
+            updateUnifiedResetBtn();
+            loadTransitionSummary();
+        }
+
+        function updateUnifiedResetBtn() {
+            const btnReset = document.getElementById('btnResetFilters');
+            if (btnReset) {
+                const isDefault = (currentScope === 'ALL' && !currentProjectId && currentTimeRange === 'ALL_TIME');
+                if (!isDefault) {
+                    btnReset.classList.remove('hidden');
+                    btnReset.classList.add('inline-flex');
+                } else {
+                    btnReset.classList.add('hidden');
+                    btnReset.classList.remove('inline-flex');
+                }
+            }
+        }
+
+        function resetUnifiedFilters() {
+            const projectOrScopeEl = document.getElementById('filterProjectOrScope');
+            if (projectOrScopeEl) projectOrScopeEl.value = 'SCOPE_ALL';
+
+            const timeEl = document.getElementById('filterTimeRangeSelect');
+            if (timeEl) timeEl.value = 'ALL_TIME';
+
+            currentScope = 'ALL';
+            currentProjectId = '';
+            currentTimeRange = 'ALL_TIME';
+
+            updateUnifiedResetBtn();
+            loadTransitionSummary();
+            loadMonthlyTransitionTrends();
+        }
+
+        async function loadProjectsForFilter() {
+            try {
+                const projects = await fetchApi('/projects');
+                if (projects && Array.isArray(projects)) {
+                    const isAdminUser = typeof Auth.isAdmin === 'function' ? Auth.isAdmin() : false;
+                    const allLabel = isAdminUser ? "Tất cả dự án (Toàn hệ thống)" : "Tất cả dự án của tôi";
+
+                    // 1. Dropdown gộp Dự án & Phạm vi ở thanh điều khiển chính
+                    const unifiedSelect = document.getElementById('filterProjectOrScope');
+                    if (unifiedSelect) {
+                        const currentVal = currentProjectId ? String(currentProjectId) : `SCOPE_${currentScope}`;
+                        let html = `
+                            <optgroup label="── Phạm vi tổng hợp ──" class="bg-white text-slate-800 dark:bg-slate-800 dark:text-slate-100 font-bold">
+                                <option value="SCOPE_ALL" ${currentVal === 'SCOPE_ALL' ? 'selected' : ''} class="bg-white text-slate-800 dark:bg-slate-800 dark:text-slate-100">${allLabel}</option>
+                                <option value="SCOPE_MANAGED" ${currentVal === 'SCOPE_MANAGED' ? 'selected' : ''} class="bg-white text-slate-800 dark:bg-slate-800 dark:text-slate-100">Dự án tôi quản lý (PM)</option>
+                                <option value="SCOPE_ASSIGNED" ${currentVal === 'SCOPE_ASSIGNED' ? 'selected' : ''} class="bg-white text-slate-800 dark:bg-slate-800 dark:text-slate-100">Dự án có việc của tôi</option>
+                            </optgroup>
+                        `;
+
+                        if (projects.length > 0) {
+                            html += `<optgroup label="── Từng dự án cụ thể ──" class="bg-white text-slate-800 dark:bg-slate-800 dark:text-slate-100 font-bold">`;
+                            projects.forEach(p => {
+                                const isSel = String(p.id) === currentVal;
+                                html += `<option value="${p.id}" ${isSel ? 'selected' : ''} class="bg-white text-slate-800 dark:bg-slate-800 dark:text-slate-100">[${escapeHtml(p.key)}] ${escapeHtml(p.name)}</option>`;
+                            });
+                            html += `</optgroup>`;
+                        }
+                        unifiedSelect.innerHTML = html;
+                    }
+
+                    // 2. Dropdown cho bảng lịch sử chuyển trạng thái
+                    const logSelect = document.getElementById('logProjectFilter');
+                    if (logSelect) {
+                        let logOptions = `<option value="" class="bg-white text-slate-800 dark:bg-slate-800 dark:text-slate-100">${allLabel}</option>`;
+                        projects.forEach(p => {
+                            logOptions += `<option value="${p.id}" class="bg-white text-slate-800 dark:bg-slate-800 dark:text-slate-100">[${escapeHtml(p.key)}] ${escapeHtml(p.name)}</option>`;
+                        });
+                        logSelect.innerHTML = logOptions;
+                    }
+                }
+            } catch (e) {
+                console.warn("Could not load full project list for filter:", e);
+            }
+        }
+
+        // =========================================================================
+        // PERFORMER FILTER (SEARCHABLE COMBOBOX) & SORTING
+        // =========================================================================
+
+        async function loadPerformers(projectId) {
+            try {
+                let url = '/reports/transitions/performers';
+                if (projectId) {
+                    url += `?projectId=${encodeURIComponent(projectId)}`;
+                }
+                const data = await fetchApi(url);
+                cachedPerformers = Array.isArray(data) ? data : [];
+                renderPerformerList(cachedPerformers);
+            } catch (err) {
+                console.warn("Could not load performers list:", err);
+                cachedPerformers = [];
+                renderPerformerList([]);
+            }
+        }
+
+        function renderPerformerList(performers) {
+            const container = document.getElementById('performerListContainer');
+            const emptyNotice = document.getElementById('performerEmptyNotice');
+            if (!container) return;
+
+            if (!performers || performers.length === 0) {
+                container.innerHTML = '';
+                if (emptyNotice) emptyNotice.classList.remove('hidden');
+                return;
+            }
+
+            if (emptyNotice) emptyNotice.classList.add('hidden');
+
+            container.innerHTML = performers.map(u => {
+                const name = escapeHtml(u.fullName || u.email || 'User');
+                const email = escapeHtml(u.email || '');
+                const initial = (name[0] || 'U').toUpperCase();
+                const isSelected = String(u.id) === String(currentLogPerformerId);
+
+                const avatarHtml = u.avatarUrl
+                    ? `<img src="${escapeHtml(u.avatarUrl)}" alt="${name}" class="w-6 h-6 rounded-full object-cover shrink-0 border border-border">`
+                    : `<div class="w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[10px] font-bold shrink-0 border border-primary/20">${initial}</div>`;
+
+                const safeName = name.replace(/'/g, "\\'");
+                return `
+                    <div onclick="selectPerformer('${u.id}', '${safeName}')"
+                        class="flex items-center justify-between px-2.5 py-1.5 rounded-lg hover:bg-surface-container-low cursor-pointer transition-colors text-text-main group ${isSelected ? 'bg-primary/10 font-semibold text-primary' : ''}">
+                        <div class="flex items-center gap-2 min-w-0">
+                            ${avatarHtml}
+                            <div class="truncate">
+                                <div class="text-xs truncate ${isSelected ? 'text-primary' : 'text-text-main'}">${name}</div>
+                                <div class="text-[10px] text-text-subtle truncate">${email}</div>
+                            </div>
+                        </div>
+                        <span class="material-symbols-outlined text-[16px] text-primary shrink-0 ${isSelected ? '' : 'hidden'}">check</span>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function filterPerformerList() {
+            const input = document.getElementById('performerSearchInput');
+            const clearBtn = document.getElementById('performerSearchClear');
+            const query = input ? input.value.trim().toLowerCase() : '';
+
+            if (clearBtn) {
+                if (query) clearBtn.classList.remove('hidden');
+                else clearBtn.classList.add('hidden');
+            }
+
+            if (!query) {
+                renderPerformerList(cachedPerformers);
+                return;
+            }
+
+            const filtered = cachedPerformers.filter(u => {
+                const name = (u.fullName || '').toLowerCase();
+                const email = (u.email || '').toLowerCase();
+                return name.includes(query) || email.includes(query);
+            });
+
+            renderPerformerList(filtered);
+        }
+
+        function clearPerformerSearchInput() {
+            const input = document.getElementById('performerSearchInput');
+            if (input) {
+                input.value = '';
+                input.focus();
+            }
+            filterPerformerList();
+        }
+
+        function togglePerformerDropdown(e) {
+            if (e) e.stopPropagation();
+            const menu = document.getElementById('performerDropdownMenu');
+            if (menu) {
+                const isHidden = menu.classList.contains('hidden');
+                if (isHidden) {
+                    menu.classList.remove('hidden');
+                    const searchInput = document.getElementById('performerSearchInput');
+                    if (searchInput) setTimeout(() => searchInput.focus(), 50);
+                } else {
+                    menu.classList.add('hidden');
+                }
+            }
+        }
+
+        function selectPerformer(val, displayName) {
+            currentLogPerformerId = val;
+            const labelEl = document.getElementById('performerSelectedLabel');
+            const clearBtn = document.getElementById('performerClearBtn');
+            const checkAll = document.getElementById('performerCheckAll');
+            const checkMe = document.getElementById('performerCheckMe');
+
+            if (val === '') {
+                if (labelEl) labelEl.textContent = 'Tất cả';
+                if (clearBtn) clearBtn.classList.add('hidden');
+                if (checkAll) checkAll.classList.remove('hidden');
+                if (checkMe) checkMe.classList.add('hidden');
+            } else if (val === 'ME') {
+                if (labelEl) labelEl.textContent = 'Chính tôi';
+                if (clearBtn) clearBtn.classList.remove('hidden');
+                if (checkAll) checkAll.classList.add('hidden');
+                if (checkMe) checkMe.classList.remove('hidden');
+            } else {
+                if (labelEl) labelEl.textContent = displayName || `User #${val}`;
+                if (clearBtn) clearBtn.classList.remove('hidden');
+                if (checkAll) checkAll.classList.add('hidden');
+                if (checkMe) checkMe.classList.add('hidden');
+            }
+
+            renderPerformerList(cachedPerformers);
+
+            const menu = document.getElementById('performerDropdownMenu');
+            if (menu) menu.classList.add('hidden');
+
+            currentLogPage = 1;
+            loadIssueTransitionLogs();
+        }
+
+        function clearPerformerSelection(e) {
+            if (e) e.stopPropagation();
+            selectPerformer('');
+        }
+
+        function onLogProjectFilterChange() {
+            const projectEl = document.getElementById('logProjectFilter');
+            currentLogProjectId = projectEl ? projectEl.value : '';
+
+            // Reset performer selection
+            currentLogPerformerId = '';
+            const labelEl = document.getElementById('performerSelectedLabel');
+            const clearBtn = document.getElementById('performerClearBtn');
+            if (labelEl) labelEl.textContent = 'Tất cả';
+            if (clearBtn) clearBtn.classList.add('hidden');
+
+            // Nạp lại danh sách thành viên thuộc dự án được chọn (hoặc tất cả dự án liên quan)
+            loadPerformers(currentLogProjectId);
+
+            currentLogPage = 1;
+            loadIssueTransitionLogs();
+        }
+
+        function onLogFilterChange() {
+            const projectEl = document.getElementById('logProjectFilter');
+            const startEl = document.getElementById('logStartDateFilter');
+            const endEl = document.getElementById('logEndDateFilter');
+            const stepEl = document.getElementById('logStepFilter');
+
+            currentLogProjectId = projectEl ? projectEl.value : '';
+            currentLogStartDate = startEl ? startEl.value : '';
+            currentLogEndDate = endEl ? endEl.value : '';
+            currentLogStep = stepEl ? stepEl.value : '';
+            currentLogPage = 1;
+
+            loadIssueTransitionLogs();
+        }
+
+        function debounceLogSearch() {
+            clearTimeout(logSearchDebounceTimer);
+            logSearchDebounceTimer = setTimeout(() => {
+                const searchEl = document.getElementById('logSearchInput');
+                logSearchTerm = searchEl ? searchEl.value.trim() : '';
+                currentLogPage = 1;
+                loadIssueTransitionLogs();
+            }, 300);
+        }
+
+        function toggleLogSort(field) {
+            if (logSortField === field) {
+                logSortDir = (logSortDir === 'desc') ? 'asc' : 'desc';
+            } else {
+                logSortField = field;
+                // Nếu là thời gian hoặc thời điểm, mặc định desc; nếu là text, mặc định asc
+                logSortDir = (field === 'transitionTimeMinutes' || field === 'changedAt') ? 'desc' : 'asc';
+            }
+            updateSortIcons();
+            currentLogPage = 1;
+            loadIssueTransitionLogs();
+        }
+
+        function updateSortIcons() {
+            const fields = [
+                { key: 'issue.issueKey', id: 'sortIcon_issue_issueKey' },
+                { key: 'issue.title', id: 'sortIcon_issue_title' },
+                { key: 'issue.project.name', id: 'sortIcon_issue_project_name' },
+                { key: 'transitionTimeMinutes', id: 'sortIcon_transitionTimeMinutes' },
+                { key: 'changedAt', id: 'sortIcon_changedAt' }
+            ];
+
+            fields.forEach(f => {
+                const el = document.getElementById(f.id);
+                if (!el) return;
+                if (logSortField === f.key) {
+                    el.textContent = logSortDir === 'desc' ? 'arrow_downward' : 'arrow_upward';
+                    el.className = 'material-symbols-outlined text-[14px] text-primary font-bold';
+                } else {
+                    el.textContent = 'unfold_more';
+                    el.className = 'material-symbols-outlined text-[14px] opacity-40 text-text-subtle';
+                }
+            });
+        }
+
+        function resetLogFilters() {
+            const projectEl = document.getElementById('logProjectFilter');
+            const startEl = document.getElementById('logStartDateFilter');
+            const endEl = document.getElementById('logEndDateFilter');
+            const stepEl = document.getElementById('logStepFilter');
+            const searchEl = document.getElementById('logSearchInput');
+
+            if (projectEl) projectEl.value = '';
+            if (startEl) startEl.value = '';
+            if (endEl) endEl.value = '';
+            if (stepEl) stepEl.value = '';
+            if (searchEl) searchEl.value = '';
+
+            currentLogProjectId = '';
+            currentLogStartDate = '';
+            currentLogEndDate = '';
+            currentLogStep = '';
+            logSearchTerm = '';
+            currentLogPerformerId = '';
+            logSortField = 'changedAt';
+            logSortDir = 'desc';
+
+            const labelEl = document.getElementById('performerSelectedLabel');
+            const clearBtn = document.getElementById('performerClearBtn');
+            const checkAll = document.getElementById('performerCheckAll');
+            const checkMe = document.getElementById('performerCheckMe');
+            if (labelEl) labelEl.textContent = 'Tất cả';
+            if (clearBtn) clearBtn.classList.add('hidden');
+            if (checkAll) checkAll.classList.remove('hidden');
+            if (checkMe) checkMe.classList.add('hidden');
+
+            loadPerformers('');
+            updateSortIcons();
+
+            currentLogPage = 1;
+            loadIssueTransitionLogs();
+        }
+
+        // =========================================================================
+        // 1. TRANSITION SUMMARY (6 METRIC CARDS)
+        // =========================================================================
+
+        async function loadTransitionSummary() {
+            try {
+                let url = `/reports/transitions/summary?scope=${encodeURIComponent(currentScope)}&timeRange=${encodeURIComponent(currentTimeRange)}`;
+                if (currentProjectId) {
+                    url += `&projectId=${encodeURIComponent(currentProjectId)}`;
+                }
+
+                const data = await fetchApi(url);
+                if (!data) return;
+
+                // Update Project Target Badge
+                const badge = document.getElementById('targetProjectBadge');
+                if (badge) {
+                    if (data.selectedProjectId && data.selectedProjectName) {
+                        badge.textContent = `Dự án: ${data.selectedProjectName}`;
+                        badge.className = "text-xs bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 font-semibold px-2.5 py-0.5 rounded-full border border-indigo-500/20";
+                    } else {
+                        if (currentScope === 'MANAGED') {
+                            badge.textContent = "Dự án tôi quản lý";
+                        } else if (currentScope === 'ASSIGNED') {
+                            badge.textContent = "Dự án có việc của tôi";
+                        } else {
+                            badge.textContent = "Toàn bộ dự án";
+                        }
+                        badge.className = "text-xs bg-primary/10 text-primary font-semibold px-2.5 py-0.5 rounded-full border border-primary/20";
+                    }
+                }
+
+                // Total transitions & rework rate
+                const totalEl = document.getElementById('statTotalTransitions');
+                if (totalEl) totalEl.textContent = data.totalTransitions || 0;
+
+                const reworkEl = document.getElementById('statReworkRate');
+                if (reworkEl) {
+                    const rate = data.reworkRate != null ? data.reworkRate : 0.0;
+                    reworkEl.textContent = `${rate}%`;
+                    if (rate > 20) {
+                        reworkEl.className = "font-bold text-danger font-mono";
+                    } else if (rate > 10) {
+                        reworkEl.className = "font-bold text-amber-600 dark:text-amber-400 font-mono";
+                    } else {
+                        reworkEl.className = "font-bold text-success font-mono";
+                    }
+                }
+
+                // 1. TODO -> IN_PROGRESS
+                setMetricUI('statTodoToProgressAvg', 'statTodoToProgressSystem', 'statTodoToProgressCount',
+                    data.todoToProgress, data.systemTodoToProgress);
+
+                // 2. IN_PROGRESS -> REVIEW
+                setMetricUI('statProgressToReviewAvg', 'statProgressToReviewSystem', 'statProgressToReviewCount',
+                    data.progressToReview, data.systemProgressToReview);
+
+                // 3. REVIEW -> DONE
+                setMetricUI('statReviewToDoneAvg', 'statReviewToDoneSystem', 'statReviewToDoneCount',
+                    data.reviewToDone, data.systemReviewToDone);
+
+                // 4. DONE -> REVIEW (Reopen)
+                setMetricUI('statDoneToReviewAvg', 'statDoneToReviewSystem', 'statDoneToReviewCount',
+                    data.doneToReview, data.systemDoneToReview);
+
+                // 5. REVIEW -> IN_PROGRESS (Rework)
+                setMetricUI('statReviewToProgressAvg', 'statReviewToProgressSystem', 'statReviewToProgressCount',
+                    data.reviewToProgress, data.systemReviewToProgress);
+
+                // 6. IN_PROGRESS -> TODO (Pause)
+                setMetricUI('statProgressToTodoAvg', 'statProgressToTodoSystem', 'statProgressToTodoCount',
+                    data.progressToTodo, data.systemProgressToTodo);
+
+            } catch (err) {
+                console.error("Transition summary error:", err);
+            }
+        }
+
+        function setMetricUI(targetAvgId, systemAvgId, countId, metric, systemMetric) {
+            const avgEl = document.getElementById(targetAvgId);
+            const sysEl = document.getElementById(systemAvgId);
+            const cntEl = document.getElementById(countId);
+
+            if (avgEl) avgEl.textContent = metric && metric.formattedTime ? metric.formattedTime : '0s';
+            if (sysEl) sysEl.textContent = systemMetric && systemMetric.formattedTime ? systemMetric.formattedTime : '0s';
+            if (cntEl) cntEl.textContent = `${metric && metric.count != null ? metric.count : 0} lượt`;
+        }
+
+        function onTrendPresetChange(val) {
+            const customContainer = document.getElementById('trendCustomDateContainer');
+            const startInput = document.getElementById('trendStartDate');
+            const endInput = document.getElementById('trendEndDate');
+
+            if (val === 'CUSTOM') {
+                if (customContainer) {
+                    customContainer.classList.remove('hidden');
+                    customContainer.classList.add('inline-flex');
+                }
+                // Nếu chưa có ngày, đặt mặc định 6 tháng gần nhất
+                if (startInput && !startInput.value) {
+                    const past = new Date();
+                    past.setMonth(past.getMonth() - 5);
+                    past.setDate(1);
+                    startInput.value = past.toISOString().slice(0, 10);
+                }
+                if (endInput && !endInput.value) {
+                    endInput.value = new Date().toISOString().slice(0, 10);
+                }
+                loadMonthlyTransitionTrends();
+            } else {
+                if (customContainer) {
+                    customContainer.classList.add('hidden');
+                    customContainer.classList.remove('inline-flex');
+                }
+                loadMonthlyTransitionTrends();
+            }
+        }
+
+        function onTrendCustomDateChange() {
+            loadMonthlyTransitionTrends();
+        }
+
+        async function loadMonthlyTransitionTrends() {
+            const canvas = document.getElementById('transitionTrendChart');
+            const emptyEl = document.getElementById('trendChartEmptyState');
+            const presetSelect = document.getElementById('trendPresetSelect');
+            const presetVal = presetSelect ? presetSelect.value : '6';
+
+            try {
+                let url = `/reports/transitions/monthly-trends?scope=${encodeURIComponent(currentScope)}`;
+                if (currentProjectId) {
+                    url += `&projectId=${encodeURIComponent(currentProjectId)}`;
+                }
+
+                if (presetVal === 'CUSTOM') {
+                    const startEl = document.getElementById('trendStartDate');
+                    const endEl = document.getElementById('trendEndDate');
+                    const startDate = startEl ? startEl.value : '';
+                    const endDate = endEl ? endEl.value : '';
+                    if (startDate) url += `&startDate=${encodeURIComponent(startDate)}`;
+                    if (endDate) url += `&endDate=${encodeURIComponent(endDate)}`;
+                } else if (presetVal === 'YTD') {
+                    const currentYear = new Date().getFullYear();
+                    const startDate = `${currentYear}-01-01`;
+                    const todayStr = new Date().toISOString().slice(0, 10);
+                    url += `&startDate=${startDate}&endDate=${todayStr}`;
+                } else {
+                    const months = parseInt(presetVal, 10) || 6;
+                    url += `&months=${months}`;
+                }
+
+                const trendList = await fetchApi(url);
+                if (!trendList || trendList.length === 0) {
+                    if (transitionTrendChart) {
+                        transitionTrendChart.destroy();
+                        transitionTrendChart = null;
+                    }
+                    canvas.style.display = 'none';
+                    emptyEl.classList.remove('hidden');
+                    return;
+                }
+
+                canvas.style.display = 'block';
+                emptyEl.classList.add('hidden');
+
+                const theme = getChartThemeColors();
+                const labels = trendList.map(t => {
+                    const parts = (t.period || '').split('-');
+                    return parts.length === 2 ? `T${parts[1]}/${parts[0]}` : t.period;
+                });
+
+                const dataTodoToProg = trendList.map(t => t.todoToProgressAvg || 0);
+                const dataProgToRev = trendList.map(t => t.progressToReviewAvg || 0);
+                const dataRevToDone = trendList.map(t => t.reviewToDoneAvg || 0);
+                const dataDoneToRev = trendList.map(t => t.doneToReviewAvg || 0);
+                const dataRevToProg = trendList.map(t => t.reviewToProgressAvg || 0);
+                const dataProgToTodo = trendList.map(t => t.progressToTodoAvg || 0);
+
+                if (transitionTrendChart) {
+                    transitionTrendChart.destroy();
+                }
+
+                const ctx = canvas.getContext('2d');
+                transitionTrendChart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [
+                            {
+                                label: 'TODO → IN_PROGRESS',
+                                data: dataTodoToProg,
+                                borderColor: '#0284c7',
+                                backgroundColor: 'rgba(2, 132, 199, 0.1)',
+                                tension: 0.3,
+                                borderWidth: 2,
+                                pointRadius: 4,
+                                pointHoverRadius: 6
+                            },
+                            {
+                                label: 'IN_PROGRESS → REVIEW',
+                                data: dataProgToRev,
+                                borderColor: '#6366f1',
+                                backgroundColor: 'rgba(99, 102, 241, 0.1)',
+                                tension: 0.3,
+                                borderWidth: 2,
+                                pointRadius: 4,
+                                pointHoverRadius: 6
+                            },
+                            {
+                                label: 'REVIEW → DONE',
+                                data: dataRevToDone,
+                                borderColor: '#10b981',
+                                backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                                tension: 0.3,
+                                borderWidth: 2,
+                                pointRadius: 4,
+                                pointHoverRadius: 6
+                            },
+                            {
+                                label: 'DONE → REVIEW (Reopen)',
+                                data: dataDoneToRev,
+                                borderColor: '#f59e0b',
+                                backgroundColor: 'transparent',
+                                tension: 0.3,
+                                borderWidth: 2,
+                                borderDash: [5, 5],
+                                pointRadius: 4,
+                                pointHoverRadius: 6
+                            },
+                            {
+                                label: 'REVIEW → IN_PROGRESS (Rework)',
+                                data: dataRevToProg,
+                                borderColor: '#ef4444',
+                                backgroundColor: 'transparent',
+                                tension: 0.3,
+                                borderWidth: 2.5,
+                                borderDash: [4, 4],
+                                pointRadius: 4,
+                                pointHoverRadius: 6
+                            },
+                            {
+                                label: 'IN_PROGRESS → TODO (Pause)',
+                                data: dataProgToTodo,
+                                borderColor: '#64748b',
+                                backgroundColor: 'transparent',
+                                tension: 0.3,
+                                borderWidth: 1.5,
+                                borderDash: [2, 2],
+                                pointRadius: 3,
+                                pointHoverRadius: 5
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        animation: { duration: 600 },
+                        interaction: {
+                            mode: 'index',
+                            intersect: false
+                        },
+                        plugins: {
+                            legend: {
+                                display: true,
+                                position: 'top',
+                                labels: {
+                                    color: theme.text,
+                                    font: { family: 'Inter', size: 11, weight: '600' },
+                                    usePointStyle: true,
+                                    pointStyle: 'circle',
+                                    padding: 12
+                                }
+                            },
+                            tooltip: {
+                                backgroundColor: document.documentElement.classList.contains('dark') ? '#1e293b' : '#0f172a',
+                                titleColor: '#ffffff',
+                                bodyColor: '#e2e8f0',
+                                padding: 12,
+                                cornerRadius: 8,
+                                boxPadding: 6,
+                                callbacks: {
+                                    label: function(context) {
+                                        const val = context.parsed.y || 0;
+                                        return ` ${context.dataset.label}: ${formatDurationSeconds(val)} (${val}s)`;
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                grid: { color: theme.grid },
+                                ticks: {
+                                    color: theme.text,
+                                    font: { family: 'Inter', size: 11 }
+                                }
+                            },
+                            y: {
+                                beginAtZero: true,
+                                grid: { color: theme.grid },
+                                ticks: {
+                                    color: theme.text,
+                                    font: { family: 'Inter', size: 11 },
+                                    callback: function(val) {
+                                        return formatDurationSeconds(val);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            } catch (err) {
+                console.error("Monthly transition trends error:", err);
+            }
+        }
+
+        // =========================================================================
+        // 3. ISSUE TRANSITION LOGS TABLE
+        // =========================================================================
+
+        function renderStepBadge(fromStatus, toStatus) {
+            const statusMap = {
+                'TODO': { label: 'TODO', bg: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border-slate-300 dark:border-slate-700' },
+                'IN_PROGRESS': { label: 'IN PROGRESS', bg: 'bg-sky-100 text-sky-700 dark:bg-sky-950/50 dark:text-sky-300 border-sky-300 dark:border-sky-700' },
+                'REVIEW': { label: 'REVIEW', bg: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-300 border-indigo-300 dark:border-indigo-700' },
+                'DONE': { label: 'DONE', bg: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700' }
+            };
+
+            const fromCfg = statusMap[fromStatus] || { label: fromStatus || '?', bg: 'bg-surface-container-low text-text-subtle border-border' };
+            const toCfg = statusMap[toStatus] || { label: toStatus || '?', bg: 'bg-surface-container-low text-text-subtle border-border' };
+
+            const isRework = (fromStatus === 'REVIEW' && toStatus === 'IN_PROGRESS') || (fromStatus === 'DONE' && toStatus === 'REVIEW');
+
+            return `
+                <div class="inline-flex items-center gap-1.5 text-xs font-semibold whitespace-nowrap">
+                    <span class="px-2 py-0.5 rounded border ${fromCfg.bg}">${fromCfg.label}</span>
+                    <span class="material-symbols-outlined text-[14px] ${isRework ? 'text-amber-500 font-bold' : 'text-text-subtle'}">arrow_forward</span>
+                    <span class="px-2 py-0.5 rounded border ${toCfg.bg}">${toCfg.label}</span>
+                </div>
+            `;
+        }
+
+        function renderUserCell(user) {
+            if (!user) {
+                return `<span class="text-text-subtle text-xs italic">Hệ thống</span>`;
+            }
+            const name = escapeHtml(user.fullName || user.email || 'User');
+            const avatar = user.avatarUrl
+                ? `<img src="${escapeHtml(user.avatarUrl)}" alt="${name}" class="w-6 h-6 rounded-full object-cover shrink-0 border border-border">`
+                : `<div class="w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[10px] font-bold shrink-0 border border-primary/20">${(name[0] || 'U').toUpperCase()}</div>`;
+
+            return `
+                <div class="flex items-center gap-2 min-w-0" title="${name}">
+                    ${avatar}
+                    <span class="text-xs text-text-main font-medium truncate">${name}</span>
+                </div>
+            `;
+        }
+
+        function renderDateTimeCell(dateStr) {
+            if (!dateStr) return '<span class="text-text-subtle text-xs">—</span>';
+            const d = new Date(dateStr);
+            if (isNaN(d.getTime())) return `<span class="text-xs font-mono text-text-subtle">${escapeHtml(dateStr)}</span>`;
+            const pad = (n) => String(n).padStart(2, '0');
+            const datePart = `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`;
+            const timePart = `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+            return `
+                <div class="text-right whitespace-nowrap leading-tight">
+                    <div class="text-xs font-mono font-medium text-text-main">${datePart}</div>
+                    <div class="text-xs font-mono text-text-subtle">${timePart}</div>
+                </div>
+            `;
+        }
+
+        function renderDurationCell(log) {
+            const formatted = log.formattedDuration || formatDurationSeconds(log.durationSeconds);
+            const seconds = log.durationSeconds != null ? log.durationSeconds : 0;
+            return `
+                <div class="text-center whitespace-nowrap leading-tight">
+                    <span class="font-mono text-xs font-bold text-text-main">${formatted}</span>
+                    <div class="text-xs font-mono text-text-subtle">(${seconds}s)</div>
+                </div>
+            `;
+        }
+
+        async function loadIssueTransitionLogs() {
+            const tbody = document.getElementById('transitionLogTableBody');
+            const badge = document.getElementById('transitionLogCountBadge');
+
+            let fromStatus = '';
+            let toStatus = '';
+            if (currentLogStep && currentLogStep.includes('->')) {
+                const parts = currentLogStep.split('->');
+                fromStatus = parts[0];
+                toStatus = parts[1];
+            }
+
+            try {
+                let url = `/reports/transitions/logs?page=${currentLogPage - 1}&size=${logPageSize}`;
+
+                if (logSortField) {
+                    url += `&sort=${encodeURIComponent(logSortField)},${encodeURIComponent(logSortDir || 'desc')}`;
+                }
+
+                if (currentLogProjectId) {
+                    url += `&projectId=${encodeURIComponent(currentLogProjectId)}`;
+                }
+
+                if (currentLogPerformerId) {
+                    let pId = currentLogPerformerId;
+                    if (pId === 'ME') {
+                        const currentUser = (typeof Auth !== 'undefined' && Auth.getUser) ? Auth.getUser() : null;
+                        pId = currentUser ? currentUser.id : '';
+                    }
+                    if (pId) {
+                        url += `&changedById=${encodeURIComponent(pId)}`;
+                    }
+                }
+
+                if (currentLogStartDate) {
+                    url += `&startDate=${encodeURIComponent(currentLogStartDate)}`;
+                }
+                if (currentLogEndDate) {
+                    url += `&endDate=${encodeURIComponent(currentLogEndDate)}`;
+                }
+                if (fromStatus && toStatus) {
+                    url += `&fromStatus=${encodeURIComponent(fromStatus)}&toStatus=${encodeURIComponent(toStatus)}`;
+                }
+                if (logSearchTerm) {
+                    url += `&search=${encodeURIComponent(logSearchTerm)}`;
+                }
+
+                const data = await fetchApi(url);
+                if (!data || !data.content) {
+                    tbody.innerHTML = `
+                        <tr>
+                            <td colspan="7" class="py-8 text-center text-text-subtle text-xs">
+                                Không thể tải dữ liệu lịch sử chuyển trạng thái.
+                            </td>
+                        </tr>
+                    `;
+                    return;
+                }
+
+                totalLogPages = data.totalPages || 1;
+                totalLogElements = data.totalElements || 0;
+
+                if (badge) {
+                    badge.textContent = `${totalLogElements} lượt chuyển`;
+                }
+
+                if (data.content.length === 0) {
+                    tbody.innerHTML = `
+                        <tr>
+                            <td colspan="7" class="py-8 text-center text-text-subtle">
+                                <span class="material-symbols-outlined text-3xl mb-1 opacity-50">search_off</span>
+                                <div class="text-xs">Không tìm thấy lần chuyển trạng thái nào phù hợp với bộ lọc hiện tại.</div>
+                            </td>
+                        </tr>
+                    `;
+                    renderLogPagination();
+                    return;
+                }
+
+                tbody.innerHTML = data.content.map(log => {
+                    const issueKey = log.issueKey ? `[${escapeHtml(log.issueKey)}]` : `Issue #${log.issueId || '—'}`;
+                    const projectKey = log.projectKey ? `[${escapeHtml(log.projectKey)}]` : '';
+                    const projectName = escapeHtml(log.projectName || '—');
+
+                    return `
+                        <tr class="hover:bg-surface-container-low/70 transition-colors">
+                            <td class="py-2.5 px-3 font-mono font-bold text-xs text-primary truncate">
+                                <a href="issue-detail.html?projectId=${log.projectId}&issueId=${log.issueId}" class="hover:underline inline-flex items-center gap-1 truncate max-w-full" title="Xem chi tiết ${escapeHtml(log.issueKey || '')}">
+                                    <span class="truncate">${issueKey}</span>
+                                    <span class="material-symbols-outlined text-[13px] opacity-70 shrink-0">open_in_new</span>
+                                </a>
+                            </td>
+                            <td class="py-2.5 px-3 font-medium text-text-main text-sm truncate">
+                                <a href="issue-detail.html?projectId=${log.projectId}&issueId=${log.issueId}" class="hover:text-primary transition-colors block truncate" title="${escapeHtml(log.issueTitle || '')}">
+                                    ${escapeHtml(log.issueTitle || '—')}
+                                </a>
+                            </td>
+                            <td class="py-2.5 px-3 text-xs truncate">
+                                <div class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-surface-container-low border border-border text-text-main max-w-full min-w-0" title="${projectName}">
+                                    <span class="font-mono font-semibold text-primary shrink-0">${projectKey}</span>
+                                    <span class="truncate text-xs">${projectName}</span>
+                                </div>
+                            </td>
+                            <td class="py-2.5 px-3">
+                                ${renderStepBadge(log.fromStatus, log.toStatus)}
+                            </td>
+                            <td class="py-2.5 px-3">
+                                ${renderDurationCell(log)}
+                            </td>
+                            <td class="py-2.5 px-3 truncate">
+                                ${renderUserCell(log.changedBy)}
+                            </td>
+                            <td class="py-2.5 px-3 text-right">
+                                ${renderDateTimeCell(log.changedAt)}
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+
+                renderLogPagination();
+
+            } catch (err) {
+                console.error("Transition log table error:", err);
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="7" class="py-8 text-center text-danger text-xs">
+                            Lỗi tải lịch sử chuyển trạng thái. Vui lòng thử lại.
+                        </td>
+                    </tr>
+                `;
+            }
+        }
+
+        function onLogPageSizeChange(size) {
+            logPageSize = parseInt(size, 10) || 10;
+            currentLogPage = 1;
+            loadIssueTransitionLogs();
+        }
+
+        function changeLogPage(page) {
+            if (page < 1 || page > totalLogPages) return;
+            currentLogPage = page;
+            loadIssueTransitionLogs();
+        }
+
+        function renderLogPagination() {
+            const infoEl = document.getElementById('logPaginationInfo');
+            const controlsEl = document.getElementById('logPaginationControls');
+
+            const startIdx = totalLogElements === 0 ? 0 : (currentLogPage - 1) * logPageSize + 1;
+            const endIdx = Math.min(currentLogPage * logPageSize, totalLogElements);
+
+            if (infoEl) {
+                infoEl.textContent = `Hiển thị ${startIdx}-${endIdx} trên ${totalLogElements}`;
+            }
+
+            if (controlsEl) {
+                buildPaginationButtons(controlsEl, currentLogPage, totalLogPages, 'changeLogPage');
+            }
+        }
+
+        function buildPaginationButtons(container, currentPage, totalPages, goToPageFnName) {
+            if (totalPages <= 1) {
+                container.innerHTML = '';
+                return;
+            }
+
+            let html = '';
+            const isPrevDisabled = currentPage === 1;
+            html += `
+                <button type="button" onclick="${isPrevDisabled ? '' : `${goToPageFnName}(${currentPage - 1})`}"
+                    class="w-8 h-8 rounded-lg border border-border flex items-center justify-center text-xs transition-colors ${
+                        isPrevDisabled
+                            ? 'opacity-40 cursor-not-allowed text-text-subtle'
+                            : 'text-text-main hover:bg-surface-container-low cursor-pointer'
+                    }"
+                    title="Trang trước" ${isPrevDisabled ? 'disabled' : ''}>
+                    <span class="material-symbols-outlined text-[16px]">chevron_left</span>
+                </button>
+            `;
+
+            const pages = getPaginationPageList(currentPage, totalPages);
+            pages.forEach(p => {
+                if (p === '...') {
+                    html += `<span class="w-8 h-8 flex items-center justify-center text-xs text-text-subtle">...</span>`;
+                } else {
+                    const isActive = p === currentPage;
+                    html += `
+                        <button type="button" onclick="${goToPageFnName}(${p})"
+                            class="w-8 h-8 rounded-lg text-xs font-semibold transition-colors ${
+                                isActive
+                                    ? 'bg-primary text-white shadow-xs'
+                                    : 'border border-border text-text-main hover:bg-surface-container-low cursor-pointer'
+                            }">
+                            ${p}
+                        </button>
+                    `;
+                }
+            });
+
+            const isNextDisabled = currentPage === totalPages;
+            html += `
+                <button type="button" onclick="${isNextDisabled ? '' : `${goToPageFnName}(${currentPage + 1})`}"
+                    class="w-8 h-8 rounded-lg border border-border flex items-center justify-center text-xs transition-colors ${
+                        isNextDisabled
+                            ? 'opacity-40 cursor-not-allowed text-text-subtle'
+                            : 'text-text-main hover:bg-surface-container-low cursor-pointer'
+                    }"
+                    title="Trang tiếp" ${isNextDisabled ? 'disabled' : ''}>
+                    <span class="material-symbols-outlined text-[16px]">chevron_right</span>
+                </button>
+            `;
+
+            container.innerHTML = html;
+        }
+
+        function getPaginationPageList(currentPage, totalPages) {
+            if (totalPages <= 7) {
+                return Array.from({ length: totalPages }, (_, i) => i + 1);
+            }
+            if (currentPage <= 4) {
+                return [1, 2, 3, 4, 5, '...', totalPages];
+            }
+            if (currentPage >= totalPages - 3) {
+                return [1, '...', totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages];
+            }
+            return [1, '...', currentPage - 1, currentPage, currentPage + 1, '...', totalPages];
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        // Theo dõi thay đổi class "dark" trên documentElement để cập nhật màu sắc biểu đồ
+        const themeObserver = new MutationObserver(function(mutations) {
+            mutations.forEach(function(mutation) {
+                if (mutation.attributeName === 'class' || mutation.attributeName === 'data-theme') {
+                    const theme = getChartThemeColors();
+                    if (transitionTrendChart) {
+                        transitionTrendChart.options.scales.x.ticks.color = theme.text;
+                        transitionTrendChart.options.scales.y.ticks.color = theme.text;
+                        transitionTrendChart.options.scales.y.grid.color = theme.grid;
+                        transitionTrendChart.options.plugins.legend.labels.color = theme.text;
+                        transitionTrendChart.update();
+                    }
+                }
+            });
+        });
+        themeObserver.observe(document.documentElement, { attributes: true });
+
+        // Đóng dropdown người thực hiện khi click ra ngoài
+        document.addEventListener('click', function(e) {
+            const wrapper = document.getElementById('performerDropdownWrapper');
+            const menu = document.getElementById('performerDropdownMenu');
+            if (wrapper && menu && !wrapper.contains(e.target)) {
+                menu.classList.add('hidden');
+            }
+        });
+
+        document.addEventListener('DOMContentLoaded', () => {
+            loadProjectsForFilter();
+            loadPerformers('');
+            updateSortIcons();
+            loadTransitionSummary();
+            loadMonthlyTransitionTrends();
+            loadIssueTransitionLogs();
+        });
+    </script>
+</body>
+</html>

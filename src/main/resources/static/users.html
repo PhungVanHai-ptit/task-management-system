@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>User Management - Mini Jira</title>
+    
+    <link rel="stylesheet" href="css/style.css"/>
+    <script>
+        (function() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            if (savedTheme === 'dark') {
+                document.documentElement.classList.add('dark');
+                document.documentElement.setAttribute('data-theme', 'dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+                document.documentElement.setAttribute('data-theme', 'light');
+            }
+        })();
+    </script>
+    
+    <!-- Design System Typography & Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
+    
+    <!-- Tailwind CSS with Design Tokens CDN -->
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "background": "var(--bg-app)",
+                        "surface": "var(--surface-lowest)",
+                        "surface-container-lowest": "var(--surface-lowest)",
+                        "surface-container-low": "var(--surface-low)",
+                        "surface-container": "var(--surface-container)",
+                        "surface-container-high": "var(--surface-high)",
+                        "surface-container-highest": "var(--surface-highest)",
+                        "surface-variant": "var(--surface-variant)",
+                        "text-main": "var(--text-main)",
+                        "text-subtle": "var(--text-subtle)",
+                        "border": "var(--border-color)",
+                        "outline": "var(--outline)",
+                        "outline-variant": "var(--outline-variant)",
+                        "secondary-container": "var(--secondary-container)",
+                        "on-secondary-fixed": "var(--on-secondary-fixed)",
+                        "on-secondary-fixed-variant": "var(--on-secondary-fixed-variant)",
+                        "inverse-surface": "var(--surface-lowest)",
+                        "inverse-on-surface": "var(--text-main)",
+                        "on-background": "var(--text-main)",
+                        "on-surface": "var(--text-main)",
+                        
+                        "primary": "#0052CC",
+                        "primary-container": "#0747A6",
+                        "primary-fixed": "var(--primary-fixed)",
+                        "primary-fixed-dim": "var(--primary-fixed-dim)",
+                        "on-primary": "#ffffff",
+                        "surface-tint": "#0747A6",
+                        
+                        "success": "#36B37E",
+                        "warning": "#FFAB00",
+                        "danger": "#FF5630",
+                        "error": "#FF5630"
+                    },
+                    spacing: { "sidebar-width": "240px", "xs": "4px", "sm": "8px", "md": "16px", "lg": "24px", "xl": "48px" },
+                    fontFamily: {
+                        "headline-sm": ["Inter"], "label-sm": ["Inter"], "label-bold": ["Inter"], "display-lg": ["Inter"],
+                        "code": ["Inter"], "body-md": ["Inter"], "headline-md": ["Inter"], "body-lg": ["Inter"]
+                    },
+                    fontSize: {
+                        "headline-sm": ["20px", { "lineHeight": "28px", "fontWeight": "600" }],
+                        "label-sm": ["12px", { "lineHeight": "16px", "fontWeight": "400" }],
+                        "label-bold": ["12px", { "lineHeight": "16px", "fontWeight": "600" }],
+                        "display-lg": ["30px", { "lineHeight": "36px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "code": ["13px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }]
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { background-color: var(--bg-app); color: var(--text-main); }
+        .card-shadow { box-shadow: var(--shadow-sm); transition: box-shadow 0.2s ease-in-out; }
+        .card-shadow:hover { box-shadow: var(--shadow-md); }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 20; }
+    </style>
+</head>
+<body class="bg-background text-text-main font-body-md min-h-screen flex antialiased">
+
+    <!-- Modular Sidebar -->
+    <div id="appSidebar"></div>
+
+    <!-- Header & Main Content Area -->
+    <div class="flex-1 flex flex-col min-w-0">
+        <!-- Main Content -->
+        <main class="ml-sidebar-width p-xl min-h-screen">
+            <!-- Header section -->
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+                <div>
+                    <h2 class="font-display-lg text-display-lg text-text-main" data-i18n="users.title">System Users</h2>
+                    <p class="font-body-md text-body-md text-text-subtle mt-1" data-i18n="users.subtitle">Manage system user accounts, permissions, and account statuses.</p>
+                </div>
+                <div class="flex items-center gap-3">
+                    <button onclick="loadUsers()" class="h-10 px-4 bg-surface-container-low hover:bg-surface-container-high text-text-main border border-border rounded-lg text-sm font-semibold flex items-center gap-2 transition-colors shadow-sm active:scale-95 cursor-pointer">
+                        <span class="material-symbols-outlined text-[18px]">refresh</span>
+                        <span data-i18n="users.refresh">Refresh</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Global Alert Container -->
+            <div id="usersAlert" class="hidden mb-6 p-3.5 rounded-lg text-sm transition-all animate-fade-in"></div>
+
+            <!-- Filter and Search Toolbar -->
+            <div class="bg-surface-container-lowest p-4 rounded-xl border border-border card-shadow mb-6 flex flex-wrap items-center justify-between gap-4">
+                <div class="flex flex-wrap items-center gap-3">
+                    <!-- Role Filter -->
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs font-bold text-text-subtle uppercase" data-i18n="users.filter.role">Role:</span>
+                        <select id="roleFilter" onchange="onRoleFilterChange()" class="border border-border rounded-lg px-3 py-1.5 bg-surface-container-low text-text-main text-xs font-medium focus:outline-none focus:border-primary">
+                            <option value="" data-i18n="users.filter.allRoles">All Roles</option>
+                            <option value="ADMIN">ADMIN</option>
+                            <option value="USER">USER</option>
+                        </select>
+                    </div>
+
+                    <!-- Status Filter -->
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs font-bold text-text-subtle uppercase" data-i18n="users.filter.status">Status:</span>
+                        <select id="statusFilter" onchange="applyFilters()" class="border border-border rounded-lg px-3 py-1.5 bg-surface-container-low text-text-main text-xs font-medium focus:outline-none focus:border-primary">
+                            <option value="" data-i18n="users.filter.allStatuses">All Statuses</option>
+                            <option value="ACTIVE" data-i18n="users.filter.active">Active</option>
+                            <option value="LOCKED" data-i18n="users.filter.locked">Locked</option>
+                            <option value="UNVERIFIED" data-i18n="users.filter.unverified">Unverified</option>
+                        </select>
+                    </div>
+
+                    <!-- Search by name/email -->
+                    <div class="relative w-64">
+                        <input type="text" id="userSearchInput" oninput="onSearchInput()" data-i18n="users.searchPlaceholder" placeholder="Search by name or email..." class="w-full border border-border rounded-lg pl-8 pr-3 py-1.5 bg-surface-container-low text-text-main text-xs focus:outline-none focus:border-primary">
+                        <span class="material-symbols-outlined text-text-subtle text-[18px] absolute left-2 top-2">search</span>
+                    </div>
+                </div>
+
+                <div class="text-xs text-text-subtle font-medium" id="userCountBadge">
+                    Showing 0 user(s)
+                </div>
+            </div>
+
+            <!-- Users Table Container -->
+            <div class="bg-surface-container-lowest border border-border rounded-xl card-shadow overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse text-sm">
+                        <thead>
+                            <tr class="border-b border-border bg-surface-container-low/50 text-text-subtle text-xs font-semibold uppercase tracking-wider">
+                                <th class="py-3.5 px-4" data-i18n="users.table.user">User</th>
+                                <th class="py-3.5 px-4" data-i18n="users.table.role">System Role</th>
+                                <th class="py-3.5 px-4" data-i18n="users.table.status">Status</th>
+                                <th class="py-3.5 px-4" data-i18n="users.table.joinedDate">Joined Date</th>
+                                <th class="py-3.5 px-4 text-right" data-i18n="users.table.actions">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="usersTableBody" class="divide-y divide-border text-text-main">
+                            <tr>
+                                <td colspan="5" class="py-12 text-center text-text-subtle">
+                                    <span class="material-symbols-outlined text-4xl mb-2 text-text-subtle/50 animate-spin">progress_activity</span>
+                                    <p data-i18n="users.table.loading">Loading users...</p>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Pagination Footer -->
+                <div id="usersPagination" class="px-6 py-4 border-t border-border bg-surface-container-lowest flex flex-col sm:flex-row items-center justify-between gap-4">
+                    <!-- Left: Info & Page Size Select -->
+                    <div class="flex items-center gap-3 text-xs text-text-subtle font-medium">
+                        <span id="userPaginationInfo">Hiển thị 0 trong tổng 0 bản ghi</span>
+                        <div class="relative inline-block">
+                            <select id="userPageSizeSelect" onchange="onUserPageSizeChange(this.value)" class="bg-surface-container-low text-text-main text-xs font-medium border border-border rounded-lg px-2.5 py-1.5 pr-7 focus:outline-none focus:border-primary cursor-pointer appearance-none shadow-sm">
+                                <option value="5">5 / trang</option>
+                                <option value="10" selected>10 / trang</option>
+                                <option value="20">20 / trang</option>
+                                <option value="50">50 / trang</option>
+                                <option value="100">100 / trang</option>
+                            </select>
+                            <span class="material-symbols-outlined absolute right-1.5 top-1/2 -translate-y-1/2 pointer-events-none text-text-subtle text-[16px]">expand_more</span>
+                        </div>
+                    </div>
+
+                    <!-- Right: Pagination Buttons -->
+                    <div class="flex items-center gap-1.5" id="userPaginationControls"></div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Change Role Modal -->
+    <div id="roleModal" class="fixed inset-0 bg-black/60 hidden flex items-center justify-center z-50 p-4">
+        <div class="bg-surface-container-lowest rounded-xl shadow-2xl w-full max-w-md p-6 border border-border animate-fade-in relative">
+            <div class="flex justify-between items-center mb-4 pb-3 border-b border-border">
+                <h3 class="font-headline-sm text-base text-text-main flex items-center gap-2">
+                    <span class="material-symbols-outlined text-primary">manage_accounts</span>
+                    <span data-i18n="users.modal.changeRoleTitle">Change System Role</span>
+                </h3>
+                <button onclick="closeRoleModal()" class="text-text-subtle hover:text-text-main cursor-pointer">
+                    <span class="material-symbols-outlined text-[20px]">close</span>
+                </button>
+            </div>
+
+            <form id="roleForm" class="space-y-4">
+                <input type="hidden" id="modalTargetUserId">
+                <div>
+                    <label class="block text-xs font-bold text-text-subtle mb-1" data-i18n="users.table.user">User:</label>
+                    <div id="modalTargetUserName" class="text-sm font-semibold text-text-main"></div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-text-subtle mb-1"><span data-i18n="users.modal.selectRole">Select Role</span> <span class="text-danger">*</span></label>
+                    <select id="modalSelectRole" required class="w-full border border-border rounded-lg px-3 py-2 bg-surface-container-low text-text-main text-sm focus:outline-none focus:border-primary">
+                        <option value="USER">USER (Standard Member)</option>
+                        <option value="ADMIN">ADMIN (Full System Privileges)</option>
+                    </select>
+                </div>
+
+                <div class="flex justify-end gap-3 pt-3 border-t border-border">
+                    <button type="button" onclick="closeRoleModal()" class="px-4 py-2 text-text-subtle hover:bg-surface-container-low rounded-lg text-xs font-medium cursor-pointer" data-i18n="users.modal.cancel">Cancel</button>
+                    <button type="submit" id="btnSubmitRole" class="px-4 py-2 bg-primary hover:bg-surface-tint text-on-primary rounded-lg text-xs font-semibold shadow-sm flex items-center gap-1.5 cursor-pointer">
+                        <span class="material-symbols-outlined text-[16px]">check</span>
+                        <span data-i18n="users.modal.save">Save Role</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="js/i18n.js?v=4"></script>
+    <script src="js/app.js?v=7"></script>
+    <script src="js/sidebar.js?v=5"></script>
+    <script>
+        if (!Auth.isAuthenticated()) {
+            window.location.href = 'login.html';
+        }
+
+        let allUsers = [];
+
+        async function loadAdminProfile() {
+            try {
+                const user = await fetchApi('/auth/me');
+                if (user) {
+                    if (user.role !== 'ADMIN') {
+                        alert('Bạn cần quyền ADMIN để truy cập trang này.');
+                        window.location.href = 'dashboard.html';
+                        return;
+                    }
+                    if (typeof applyUserRoleUI === 'function') {
+                        applyUserRoleUI(user);
+                    }
+                }
+            } catch (err) {
+                console.error("Failed to load user info:", err);
+            }
+        }
+
+        // Server-Side Pagination State
+        let currentUserPage = 1;
+        let userPageSize = 10;
+        let totalUserElements = 0;
+        let totalUserPages = 1;
+        let searchDebounceTimeout = null;
+        let currentLoadedUsers = [];
+
+        async function loadUsers() {
+            const tableBody = document.getElementById('usersTableBody');
+            tableBody.innerHTML = `
+                <tr>
+                    <td colspan="5" class="py-12 text-center text-text-subtle">
+                        <span class="material-symbols-outlined text-4xl mb-2 text-text-subtle/50 animate-spin">progress_activity</span>
+                        <p data-i18n="users.table.loading">${I18n.t('users.table.loading')}</p>
+                    </td>
+                </tr>
+            `;
+
+            const role = document.getElementById('roleFilter')?.value || '';
+            const status = document.getElementById('statusFilter')?.value || '';
+            const keyword = (document.getElementById('userSearchInput')?.value || '').trim();
+
+            let url = `/users?page=${currentUserPage - 1}&size=${userPageSize}`;
+            if (role) url += `&role=${encodeURIComponent(role)}`;
+            if (status) url += `&status=${encodeURIComponent(status)}`;
+            if (keyword) url += `&keyword=${encodeURIComponent(keyword)}`;
+
+            try {
+                const response = await fetchApi(url);
+                const items = (response && response.content) ? response.content : (Array.isArray(response) ? response : []);
+                totalUserElements = (response && typeof response.totalElements === 'number') ? response.totalElements : items.length;
+                totalUserPages = (response && typeof response.totalPages === 'number') ? response.totalPages : (Math.ceil(totalUserElements / userPageSize) || 1);
+
+                currentLoadedUsers = items;
+                renderUsers(items);
+                renderUsersPagination();
+            } catch (err) {
+                console.error("Failed to load users:", err);
+                tableBody.innerHTML = `
+                    <tr>
+                        <td colspan="5" class="py-12 text-center text-danger">
+                            <span class="material-symbols-outlined text-4xl mb-2 text-danger">lock</span>
+                            <p class="font-bold text-sm mb-1">Access Denied / Không có quyền truy cập</p>
+                            <p class="text-xs text-text-subtle max-w-md mx-auto">Trang này chỉ dành cho tài khoản có vai trò <span class="font-bold text-primary">ADMIN</span>. Tài khoản hiện tại của bạn là <span class="font-bold">USER</span> nên không thể truy xuất danh sách người dùng.</p>
+                        </td>
+                    </tr>
+                `;
+                totalUserElements = 0;
+                totalUserPages = 1;
+                renderUsersPagination();
+            }
+        }
+
+        function renderUsers(users) {
+            const tableBody = document.getElementById('usersTableBody');
+
+            if (!users || users.length === 0) {
+                tableBody.innerHTML = `
+                    <tr>
+                        <td colspan="5" class="py-12 text-center text-text-subtle">
+                            <span class="material-symbols-outlined text-4xl mb-2 text-text-subtle/50">group_off</span>
+                            <p data-i18n="users.table.empty">${I18n.t('users.table.empty')}</p>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            const currentAdmin = Auth.getUser() || {};
+            const lockedLabel = I18n.t('users.filter.locked');
+            const unverifiedLabel = I18n.t('users.filter.unverified');
+            const activeLabel = I18n.t('users.filter.active');
+
+            tableBody.innerHTML = users.map(user => {
+                const initial = (user.fullName || user.email || 'U').charAt(0).toUpperCase();
+                const roleBadge = user.role === 'ADMIN'
+                    ? 'bg-primary/10 text-primary border border-primary/20'
+                    : 'bg-surface-container-high text-text-subtle';
+
+                const isSelf = (currentAdmin && (user.id === currentAdmin.id || user.email === currentAdmin.email));
+
+                // 3-trạng thái badge: Active / Locked / Unverified
+                let statusBadge;
+                if (user.locked) {
+                    statusBadge = `<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-danger/10 text-danger"><span class="w-1.5 h-1.5 rounded-full bg-danger"></span> ${lockedLabel}</span>`;
+                } else if (!user.emailVerified) {
+                    statusBadge = `<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-warning/10 text-warning"><span class="w-1.5 h-1.5 rounded-full bg-warning"></span> ${unverifiedLabel}</span>`;
+                } else {
+                    statusBadge = `<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-success/10 text-success"><span class="w-1.5 h-1.5 rounded-full bg-success"></span> ${activeLabel}</span>`;
+                }
+
+                const formattedDate = user.createdAt ? new Date(user.createdAt).toLocaleDateString() : '-';
+
+                const avatarHtml = user.avatarUrl
+                    ? `<img src="${user.avatarUrl}" class="w-full h-full rounded-full object-cover" onerror="this.outerHTML='<span class=\\'font-bold text-xs\\'>${initial}</span>'" loading="lazy" />`
+                    : initial;
+
+                return `
+                    <tr class="hover:bg-surface-container-low/60 dark:hover:bg-inverse-surface/80 transition-colors">
+                        <td class="py-3.5 px-4">
+                            <div class="flex items-center gap-3">
+                                <div class="w-8 h-8 rounded-full bg-primary/10 text-primary border border-primary/20 flex items-center justify-center font-bold text-xs shrink-0 overflow-hidden">
+                                    ${avatarHtml}
+                                </div>
+                                <div>
+                                    <div class="font-semibold text-text-main text-xs flex items-center gap-1.5">
+                                        <span>${user.fullName || 'User'}</span>
+                                        <span class="font-mono text-[10px] text-text-subtle">#${user.id}</span>
+                                        ${isSelf ? `<span class="bg-primary/15 text-primary text-[10px] font-bold px-1.5 py-0.2 rounded border border-primary/30">${I18n.t('users.table.you')}</span>` : ''}
+                                    </div>
+                                    <div class="text-[11px] text-text-subtle">${user.email}</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="py-3.5 px-4">
+                            <span class="px-2.5 py-1 rounded text-xs font-bold ${roleBadge}">
+                                ${user.role || 'USER'}
+                            </span>
+                        </td>
+                        <td class="py-3.5 px-4">
+                            ${statusBadge}
+                        </td>
+                        <td class="py-3.5 px-4 text-xs text-text-subtle font-mono">
+                            ${formattedDate}
+                        </td>
+                        <td class="py-3.5 px-4 text-right">
+                            <div class="flex items-center justify-end gap-1.5">
+                                <button onclick="openRoleModal(${user.id}, '${user.fullName || user.email}', '${user.role}')" class="px-2 py-1 text-xs text-text-subtle hover:text-primary hover:bg-primary/10 rounded transition-colors cursor-pointer" title="${I18n.t('users.action.changeRole')}">
+                                    <span class="material-symbols-outlined text-[16px]">edit_note</span>
+                                </button>
+
+                                ${isSelf ? `
+                                    <button disabled class="px-2 py-1 text-xs text-text-subtle/30 cursor-not-allowed rounded" title="${I18n.t('users.action.cannotSelfLock')}">
+                                        <span class="material-symbols-outlined text-[16px]">lock</span>
+                                    </button>
+                                    <button disabled class="px-2 py-1 text-xs text-text-subtle/30 cursor-not-allowed rounded" title="${I18n.t('users.action.cannotSelfDelete')}">
+                                        <span class="material-symbols-outlined text-[16px]">delete</span>
+                                    </button>
+                                ` : `
+                                    ${!user.locked ? `
+                                        <button onclick="toggleLockUser(${user.id}, false)" class="px-2 py-1 text-xs text-warning hover:bg-warning/10 rounded transition-colors cursor-pointer" title="${I18n.t('users.action.lockAccount')}">
+                                            <span class="material-symbols-outlined text-[16px]">lock</span>
+                                        </button>
+                                    ` : `
+                                        <button onclick="toggleLockUser(${user.id}, true)" class="px-2 py-1 text-xs text-success hover:bg-success/10 rounded transition-colors cursor-pointer" title="${I18n.t('users.action.unlockAccount')}">
+                                            <span class="material-symbols-outlined text-[16px]">lock_open</span>
+                                        </button>
+                                    `}
+
+                                    <button onclick="deleteUser(${user.id}, '${user.fullName || user.email}')" class="px-2 py-1 text-xs text-danger hover:bg-danger/10 rounded transition-colors cursor-pointer" title="${I18n.t('users.action.deleteUser')}">
+                                        <span class="material-symbols-outlined text-[16px]">delete</span>
+                                    </button>
+                                `}
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function onUserPageSizeChange(size) {
+            userPageSize = parseInt(size, 10) || 10;
+            currentUserPage = 1;
+            loadUsers();
+        }
+
+        function goToUserPage(page) {
+            if (page < 1 || page > totalUserPages || page === currentUserPage) return;
+            currentUserPage = page;
+            loadUsers();
+        }
+
+        function applyFilters() {
+            currentUserPage = 1;
+            loadUsers();
+        }
+
+        function renderUsersPagination() {
+            // Update info text
+            const infoEl = document.getElementById('userPaginationInfo');
+            if (infoEl) {
+                if (totalUserElements === 0) {
+                    infoEl.textContent = I18n.t('pagination.showingEmpty');
+                } else {
+                    const startIdx = (currentUserPage - 1) * userPageSize + 1;
+                    const endIdx = Math.min(currentUserPage * userPageSize, totalUserElements);
+                    infoEl.textContent = I18n.t('pagination.showing', {
+                        start: startIdx,
+                        end: endIdx,
+                        total: totalUserElements
+                    });
+                }
+            }
+
+            // Update select options text according to language
+            updatePageSizeSelectOptions('userPageSizeSelect', userPageSize);
+
+            // Update badge above table
+            const badgeEl = document.getElementById('userCountBadge');
+            if (badgeEl) {
+                badgeEl.textContent = `${I18n.t('users.filter.showing')} ${totalUserElements} ${I18n.t('users.filter.usersCount')}`;
+            }
+
+            // Render pagination buttons
+            renderPaginationButtons('userPaginationControls', currentUserPage, totalUserPages, 'goToUserPage');
+        }
+
+        function updatePageSizeSelectOptions(selectId, currentSize) {
+            const select = document.getElementById(selectId);
+            if (!select) return;
+            const perPageText = I18n.t('pagination.perPage');
+            const sizes = [5, 10, 20, 50, 100];
+            select.innerHTML = sizes.map(s => 
+                `<option value="${s}" ${s === currentSize ? 'selected' : ''}>${s} / ${perPageText}</option>`
+            ).join('');
+        }
+
+        function renderPaginationButtons(containerId, currentPage, totalPages, goToPageFnName) {
+            const container = document.getElementById(containerId);
+            if (!container) return;
+
+            const isPrevDisabled = currentPage <= 1;
+            let html = `
+                <button type="button" onclick="${isPrevDisabled ? '' : `${goToPageFnName}(${currentPage - 1})`}" 
+                    class="w-8 h-8 rounded-lg border border-border flex items-center justify-center text-xs transition-colors ${
+                        isPrevDisabled 
+                            ? 'opacity-40 cursor-not-allowed text-text-subtle' 
+                            : 'text-text-main hover:bg-surface-container-low cursor-pointer'
+                    }" 
+                    title="Previous Page" ${isPrevDisabled ? 'disabled' : ''}>
+                    <span class="material-symbols-outlined text-[16px]">chevron_left</span>
+                </button>
+            `;
+
+            const pages = getPaginationPageList(currentPage, totalPages);
+            pages.forEach(p => {
+                if (p === '...') {
+                    html += `<span class="w-8 h-8 flex items-center justify-center text-text-subtle text-xs select-none">...</span>`;
+                } else {
+                    const isActive = p === currentPage;
+                    html += `
+                        <button type="button" onclick="${goToPageFnName}(${p})" 
+                            class="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-semibold transition-all cursor-pointer ${
+                                isActive 
+                                    ? 'bg-primary text-white shadow-sm' 
+                                    : 'border border-border text-text-main hover:bg-surface-container-low'
+                            }">
+                            ${p}
+                        </button>
+                    `;
+                }
+            });
+
+            const isNextDisabled = currentPage >= totalPages;
+            html += `
+                <button type="button" onclick="${isNextDisabled ? '' : `${goToPageFnName}(${currentPage + 1})`}" 
+                    class="w-8 h-8 rounded-lg border border-border flex items-center justify-center text-xs transition-colors ${
+                        isNextDisabled 
+                            ? 'opacity-40 cursor-not-allowed text-text-subtle' 
+                            : 'text-text-main hover:bg-surface-container-low cursor-pointer'
+                    }" 
+                    title="Next Page" ${isNextDisabled ? 'disabled' : ''}>
+                    <span class="material-symbols-outlined text-[16px]">chevron_right</span>
+                </button>
+            `;
+
+            container.innerHTML = html;
+        }
+
+        function getPaginationPageList(currentPage, totalPages) {
+            if (totalPages <= 7) {
+                return Array.from({ length: totalPages }, (_, i) => i + 1);
+            }
+            if (currentPage <= 4) {
+                return [1, 2, 3, 4, 5, '...', totalPages];
+            }
+            if (currentPage >= totalPages - 3) {
+                return [1, '...', totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages];
+            }
+            return [1, '...', currentPage - 1, currentPage, currentPage + 1, '...', totalPages];
+        }
+
+        window.onLanguageChanged = function() {
+            renderUsersPagination();
+            if (currentLoadedUsers && currentLoadedUsers.length > 0) {
+                renderUsers(currentLoadedUsers);
+            }
+        };
+
+        function onSearchInput() {
+            clearTimeout(searchDebounceTimeout);
+            searchDebounceTimeout = setTimeout(() => {
+                applyFilters();
+            }, 300);
+        }
+
+        function onRoleFilterChange() {
+            applyFilters();
+        }
+
+        function showAlert(msg, isSuccess = true) {
+            const box = document.getElementById('usersAlert');
+            box.className = isSuccess 
+                ? 'mb-6 p-3.5 rounded-lg text-xs bg-success/10 text-success border border-success/20 block animate-fade-in'
+                : 'mb-6 p-3.5 rounded-lg text-xs bg-danger/10 text-danger border border-danger/20 block animate-fade-in';
+            box.textContent = msg;
+            setTimeout(() => { box.className = 'hidden'; }, 4000);
+        }
+
+        async function toggleLockUser(userId, isCurrentlyLocked) {
+            const currentAdmin = Auth.getUser();
+            if (currentAdmin && (userId === currentAdmin.id || currentAdmin.email === userId)) {
+                showAlert('Bạn không thể tự khóa tài khoản của chính mình!', false);
+                return;
+            }
+            const action = isCurrentlyLocked ? 'unlock' : 'lock';
+            try {
+                await fetchApi(`/users/${userId}/${action}`, { method: 'PATCH' });
+                showAlert(`Tài khoản đã được ${isCurrentlyLocked ? 'mở khóa' : 'khóa'} thành công!`, true);
+                loadUsers();
+            } catch (err) {
+                showAlert(err.message || `Không thể ${action} tài khoản.`, false);
+            }
+        }
+
+        async function deleteUser(userId, name) {
+            const currentAdmin = Auth.getUser();
+            if (currentAdmin && (userId === currentAdmin.id || currentAdmin.email === name)) {
+                showAlert('Bạn không thể tự xóa tài khoản của chính mình!', false);
+                return;
+            }
+            if (!confirm(`Are you sure you want to soft-delete user "${name}"?`)) return;
+            try {
+                await fetchApi(`/users/${userId}`, { method: 'DELETE' });
+                showAlert(`User "${name}" has been soft-deleted.`, true);
+                loadUsers();
+            } catch (err) {
+                showAlert(err.message || 'Failed to delete user.', false);
+            }
+        }
+
+        function openRoleModal(userId, name, currentRole) {
+            document.getElementById('modalTargetUserId').value = userId;
+            document.getElementById('modalTargetUserName').textContent = name;
+            document.getElementById('modalSelectRole').value = currentRole || 'USER';
+            document.getElementById('roleModal').classList.remove('hidden');
+        }
+
+        function closeRoleModal() {
+            document.getElementById('roleModal').classList.add('hidden');
+            document.getElementById('roleForm').reset();
+        }
+
+        document.getElementById('roleForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const userId = document.getElementById('modalTargetUserId').value;
+            const roleName = document.getElementById('modalSelectRole').value;
+            const btn = document.getElementById('btnSubmitRole');
+            btn.disabled = true;
+
+            try {
+                await fetchApi(`/users/${userId}/roles`, {
+                    method: 'PUT',
+                    body: JSON.stringify({ roleName })
+                });
+                showAlert(`Role updated to ${roleName} successfully!`, true);
+                closeRoleModal();
+                loadUsers();
+            } catch (err) {
+                alert(err.message || 'Failed to assign role');
+            } finally {
+                btn.disabled = false;
+            }
+        });
+
+        document.addEventListener('DOMContentLoaded', () => {
+            loadAdminProfile();
+            loadUsers();
+        });
+    </script>
+</body>
+</html>

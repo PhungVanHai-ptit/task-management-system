@@ -1,0 +1,1572 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>Issue Board - Mini Jira</title>
+    <link rel="stylesheet" href="css/style.css"/>
+    <script>
+        (function() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            if (savedTheme === 'dark') {
+                document.documentElement.classList.add('dark');
+                document.documentElement.setAttribute('data-theme', 'dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+                document.documentElement.setAttribute('data-theme', 'light');
+            }
+        })();
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "background": "var(--bg-app)",
+                        "surface": "var(--surface-lowest)",
+                        "surface-container-lowest": "var(--surface-lowest)",
+                        "surface-container-low": "var(--surface-low)",
+                        "surface-container": "var(--surface-container)",
+                        "surface-container-high": "var(--surface-high)",
+                        "surface-container-highest": "var(--surface-highest)",
+                        "surface-variant": "var(--surface-variant)",
+                        "text-main": "var(--text-main)",
+                        "text-subtle": "var(--text-subtle)",
+                        "border": "var(--border-color)",
+                        "outline": "var(--outline)",
+                        "outline-variant": "var(--outline-variant)",
+                        "secondary-container": "var(--secondary-container)",
+                        "on-secondary-fixed": "var(--on-secondary-fixed)",
+                        "on-secondary-fixed-variant": "var(--on-secondary-fixed-variant)",
+                        "inverse-surface": "var(--surface-lowest)",
+                        "inverse-on-surface": "var(--text-main)",
+                        "on-background": "var(--text-main)",
+                        "on-surface": "var(--text-main)",
+                        
+                        "primary": "#0052CC",
+                        "primary-container": "#0747A6",
+                        "primary-fixed": "var(--primary-fixed)",
+                        "primary-fixed-dim": "var(--primary-fixed-dim)",
+                        "on-primary": "#ffffff",
+                        "surface-tint": "#0747A6",
+                        
+                        "success": "#36B37E",
+                        "warning": "#FFAB00",
+                        "danger": "#FF5630",
+                        "error": "#FF5630"
+                    },
+                    spacing: { "sidebar-width": "240px", "xs": "4px", "sm": "8px", "md": "16px", "lg": "24px", "xl": "48px" },
+                    fontFamily: {
+                        "headline-sm": ["Inter"], "label-sm": ["Inter"], "label-bold": ["Inter"], "display-lg": ["Inter"],
+                        "code": ["Inter"], "body-md": ["Inter"], "headline-md": ["Inter"], "body-lg": ["Inter"]
+                    },
+                    fontSize: {
+                        "headline-sm": ["20px", { "lineHeight": "28px", "fontWeight": "600" }],
+                        "label-sm": ["12px", { "lineHeight": "16px", "fontWeight": "400" }],
+                        "label-bold": ["12px", { "lineHeight": "16px", "fontWeight": "600" }],
+                        "display-lg": ["30px", { "lineHeight": "36px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "code": ["13px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }]
+                    },
+                    boxShadow: {
+                        'card-base': 'var(--shadow-sm)',
+                        'card-hover': 'var(--shadow-md)',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { background-color: var(--bg-app); color: var(--text-main); }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+        .material-symbols-outlined.fill { font-variation-settings: 'FILL' 1; }
+        .board-scroll::-webkit-scrollbar { height: 8px; }
+        .board-scroll::-webkit-scrollbar-track { background: var(--surface-low); border-radius: 4px; }
+        .board-scroll::-webkit-scrollbar-thumb { background-color: var(--border-color); border-radius: 4px; }
+        .board-scroll::-webkit-scrollbar-thumb:hover { background-color: var(--text-subtle); }
+        
+        .issue-card { cursor: grab; user-select: none; }
+        .issue-card:active { cursor: grabbing; }
+        .column-drop-zone { min-height: 250px; height: 100%; transition: all 0.2s ease; border: 2px dashed transparent; }
+        .column-drop-zone.drag-over { background-color: rgba(0, 82, 204, 0.08); border-color: var(--primary) !important; border-radius: 8px; }
+        .empty-zone-placeholder { border: 2px dashed var(--border-color); border-radius: 8px; padding: 24px 12px; text-align: center; color: var(--text-subtle); font-size: 12px; pointer-events: none; }
+    </style>
+</head>
+<body class="bg-background text-text-main font-body-md text-body-md antialiased min-h-screen overflow-x-hidden">
+    
+    <!-- Modular Sidebar -->
+    <div id="appSidebar"></div>
+
+    <div class="ml-sidebar-width min-w-0 min-h-screen flex flex-col relative">
+        <main class="flex-1 flex flex-col">
+            <div class="px-xl pt-lg pb-md flex-shrink-0">
+                <nav class="flex items-center gap-sm text-text-subtle font-label-sm text-label-sm mb-md">
+                    <a href="projects.html" class="hover:text-primary transition-colors" data-i18n="board.breadcrumbs.projects">Projects</a>
+                    <span class="material-symbols-outlined text-[14px]">chevron_right</span>
+                    <span class="text-text-main font-label-bold" id="projectNameBreadcrumb">Project Board</span>
+                </nav>
+
+                <!-- Project Cover Banner -->
+                <div id="boardCoverBanner" class="hidden h-28 sm:h-36 w-full bg-cover bg-center rounded-xl mb-4 relative overflow-hidden shadow-sm border border-border">
+                    <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent"></div>
+                </div>
+
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
+                    <div>
+                        <h2 class="font-display-lg text-display-lg text-text-main" id="projectTitle">Board</h2>
+                        <p class="font-body-md text-body-md text-text-subtle mt-1" id="projectDesc">Manage issues</p>
+                    </div>
+                    <!-- Board Actions: Member Avatars, Manage Members, Edit/Delete Project, New Issue -->
+                    <div class="flex items-center gap-3 flex-wrap">
+                        <div class="flex items-center -space-x-2" id="memberAvatarList"></div>
+                        <button onclick="openMemberModal()" class="h-10 px-4 border border-border hover:border-primary rounded-lg text-sm font-semibold text-text-main bg-surface-container-lowest flex items-center gap-2 transition-all shadow-sm active:scale-95 cursor-pointer">
+                            <span class="material-symbols-outlined text-[18px]">group</span>
+                            <span data-i18n="board.membersBtn">Members</span>
+                        </button>
+                        <button id="btnEditProject" onclick="openEditProjectModal()" class="hidden h-10 px-3 border border-border hover:border-primary rounded-lg text-sm font-semibold text-text-main bg-surface-container-lowest flex items-center gap-1.5 transition-all shadow-sm active:scale-95 cursor-pointer" title="Edit Project">
+                            <span class="material-symbols-outlined text-[18px]">edit</span>
+                            <span data-i18n="projects.action.edit">Edit</span>
+                        </button>
+                        <button id="btnDeleteProject" onclick="openDeleteProjectModal()" class="hidden h-10 px-3 border border-border hover:border-danger hover:text-danger rounded-lg text-sm font-semibold text-text-subtle bg-surface-container-lowest flex items-center gap-1.5 transition-all shadow-sm active:scale-95 cursor-pointer" title="Delete Project">
+                            <span class="material-symbols-outlined text-[18px]">delete</span>
+                            <span data-i18n="projects.action.delete">Delete</span>
+                        </button>
+
+
+                        <button id="btnCreateIssue" onclick="openCreateIssueModal()" class="hidden h-10 px-4 bg-primary hover:bg-surface-tint text-white rounded-lg text-sm font-semibold flex items-center gap-2 transition-all shadow-sm hover:shadow active:scale-95 cursor-pointer">
+                            <span class="material-symbols-outlined text-[18px]">add</span>
+                            <span data-i18n="board.newIssueBtn">New Issue</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Board Filter Bar -->
+                <div class="flex items-center gap-3 mt-4 pt-3 border-t border-border/60 flex-wrap">
+                    <div class="flex items-center gap-2">
+                        <span class="material-symbols-outlined text-[18px] text-text-subtle">label</span>
+                        <label for="boardLabelFilter" class="font-label-bold text-xs text-text-subtle" data-i18n="issues.filter.label">Nhãn:</label>
+                        <select id="boardLabelFilter" onchange="onBoardLabelFilterChange(this.value)" class="border border-border rounded-lg px-2.5 py-1.5 bg-surface-container-low text-text-main text-xs focus:outline-none focus:border-primary">
+                            <option value="" data-i18n="labels.filter.all">-- Tất cả nhãn --</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Kanban Board -->
+            <div class="px-xl pb-16 grid grid-cols-4 gap-4 w-full min-h-[500px]">
+                <!-- TODO Column -->
+                <div class="flex flex-col bg-surface-container-low/30 rounded-xl p-3 border border-border/80 min-h-[450px]">
+                    <div class="flex items-center justify-between mb-sm px-1">
+                        <h3 class="font-label-bold text-label-bold text-text-subtle uppercase tracking-wider truncate" data-i18n="board.col.todo">TODO</h3>
+                        <span id="count-TODO" class="text-text-subtle font-label-sm bg-surface-container-high px-2 py-0.5 rounded-full shrink-0">0</span>
+                    </div>
+                    <div class="flex-1 flex flex-col gap-sm pb-4 column-drop-zone p-1.5 rounded-lg" data-status="TODO" id="col-TODO">
+                    </div>
+                </div>
+                
+                <!-- IN PROGRESS Column -->
+                <div class="flex flex-col bg-surface-container-low/30 rounded-xl p-3 border border-border/80 min-h-[450px]">
+                    <div class="flex items-center justify-between mb-sm px-1">
+                        <h3 class="font-label-bold text-label-bold text-primary uppercase tracking-wider truncate" data-i18n="board.col.inProgress">IN PROGRESS</h3>
+                        <span id="count-IN_PROGRESS" class="text-text-subtle font-label-sm bg-surface-container-high px-2 py-0.5 rounded-full shrink-0">0</span>
+                    </div>
+                    <div class="flex-1 flex flex-col gap-sm pb-4 column-drop-zone p-1.5 rounded-lg" data-status="IN_PROGRESS" id="col-IN_PROGRESS">
+                    </div>
+                </div>
+
+                <!-- REVIEW Column -->
+                <div class="flex flex-col bg-surface-container-low/30 rounded-xl p-3 border border-border/80 min-h-[450px]">
+                    <div class="flex items-center justify-between mb-sm px-1">
+                        <h3 class="font-label-bold text-label-bold text-warning uppercase tracking-wider truncate" data-i18n="board.col.inReview">IN REVIEW</h3>
+                        <span id="count-REVIEW" class="text-text-subtle font-label-sm bg-surface-container-high px-2 py-0.5 rounded-full shrink-0">0</span>
+                    </div>
+                    <div class="flex-1 flex flex-col gap-sm pb-4 column-drop-zone p-1.5 rounded-lg" data-status="REVIEW" id="col-REVIEW">
+                    </div>
+                </div>
+
+                <!-- DONE Column -->
+                <div class="flex flex-col bg-surface-container-low/30 rounded-xl p-3 border border-border/80 min-h-[450px]">
+                    <div class="flex items-center justify-between mb-sm px-1">
+                        <h3 class="font-label-bold text-label-bold text-success uppercase tracking-wider truncate" data-i18n="board.col.done">DONE</h3>
+                        <span id="count-DONE" class="text-text-subtle font-label-sm bg-surface-container-high px-2 py-0.5 rounded-full shrink-0">0</span>
+                    </div>
+                    <div class="flex-1 flex flex-col gap-sm pb-4 column-drop-zone p-1.5 rounded-lg" data-status="DONE" id="col-DONE">
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Member Management Modal -->
+    <div id="memberModal" class="fixed inset-0 bg-black/60 hidden flex items-center justify-center z-50 p-4">
+        <div class="bg-surface-container-lowest rounded-xl shadow-2xl w-full max-w-2xl p-6 border border-border animate-fade-in relative">
+            <div class="flex justify-between items-center mb-4 pb-3 border-b border-border">
+                <div>
+                    <h3 class="font-headline-sm text-lg text-text-main flex items-center gap-2">
+                        <span class="material-symbols-outlined text-primary">groups</span>
+                        <span data-i18n="board.modal.membersTitle">Project Members</span>
+                    </h3>
+                    <p class="text-xs text-text-subtle mt-0.5" id="memberModalSubtitle" data-i18n="board.modal.membersSubtitle">Manage user access and roles in this project.</p>
+                </div>
+                <button onclick="closeMemberModal()" class="text-text-subtle hover:text-text-main cursor-pointer">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
+
+            <div id="memberAlert" class="hidden mb-4 p-3 rounded-lg text-sm"></div>
+
+            <!-- Add Member Form (Placed Above) -->
+            <div id="addMemberSection" class="bg-surface-container-low/70 p-4 sm:p-5 rounded-xl border border-border shadow-sm mb-6 relative z-20">
+                <h4 class="text-xs font-label-bold text-text-main uppercase mb-3 flex items-center gap-1.5">
+                    <span class="material-symbols-outlined text-[18px] text-primary">person_add</span>
+                    <span data-i18n="board.modal.addNewMember">Thêm thành viên mới</span>
+                </h4>
+                <form id="addMemberForm" class="flex flex-col gap-3.5">
+                    <!-- Tầng 1: Ô tìm kiếm ứng viên chiếm 100% chiều ngang, chiều cao h-11 chuẩn -->
+                    <div class="w-full relative">
+                        <label class="block text-xs font-medium text-text-subtle mb-1.5">
+                            <span data-i18n="board.modal.userId">Người dùng</span> <span class="text-danger">*</span>
+                        </label>
+                        <div class="relative">
+                            <span class="material-symbols-outlined text-[20px] text-text-subtle absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none">search</span>
+                            <input type="text" id="memberSearchInput" autocomplete="off" placeholder="Tìm theo tên hoặc email người dùng..." 
+                                class="w-full h-11 border border-border rounded-lg pl-10 pr-10 bg-surface-container-lowest text-text-main text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary shadow-sm transition-all" />
+                            <button type="button" id="btnClearCandidate" class="hidden absolute right-3 top-1/2 -translate-y-1/2 text-text-subtle hover:text-text-main p-1 rounded-md hover:bg-surface-container-high transition-colors cursor-pointer" title="Xóa lựa chọn">
+                                <span class="material-symbols-outlined text-[18px]">close</span>
+                            </button>
+                        </div>
+                        <input type="hidden" id="newMemberUserId" name="userId" value="" />
+                        
+                        <!-- Dropdown list results -->
+                        <div id="candidateDropdownList" class="hidden absolute left-0 right-0 mt-1 bg-surface-container-lowest border border-border rounded-xl shadow-2xl z-50 max-h-60 overflow-y-auto divide-y divide-border">
+                            <!-- Results will be injected here -->
+                        </div>
+                    </div>
+
+                    <!-- Tầng 2: Chọn Project Role + Nút Thêm vào dự án -->
+                    <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-1">
+                        <div class="flex items-center gap-2.5 flex-1 sm:max-w-xs">
+                            <label class="text-xs font-medium text-text-subtle whitespace-nowrap"><span data-i18n="board.modal.projectRole">Project Role</span> <span class="text-danger">*</span>:</label>
+                            <select id="newMemberRoleId" required class="flex-1 h-10 border border-border rounded-lg px-3 bg-surface-container-lowest text-text-main text-xs font-semibold focus:outline-none focus:border-primary cursor-pointer shadow-sm">
+                                <option value="2" selected>DEVELOPER</option>
+                                <option value="1">PROJECT_MANAGER</option>
+                                <option value="4">TESTER</option>
+                                <option value="5">BA</option>
+                                <option value="3">REPORTER</option>
+                            </select>
+                        </div>
+                        <button type="submit" id="btnAddMember" class="h-10 px-5 bg-primary hover:bg-surface-tint text-on-primary rounded-lg text-xs font-semibold shadow-sm flex items-center justify-center gap-1.5 transition-all shrink-0 cursor-pointer active:scale-95">
+                            <span class="material-symbols-outlined text-[18px]">add</span>
+                            <span data-i18n="board.modal.addMemberBtn">Thêm vào dự án</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Existing Members List (Placed Below) -->
+            <div class="relative z-10">
+                <h4 class="text-xs font-label-bold text-text-subtle uppercase mb-2" data-i18n="board.modal.currentMembers">Current Members</h4>
+                <div class="max-h-60 overflow-y-auto divide-y divide-border border border-border rounded-lg" id="memberTableBody">
+                    <div class="p-4 text-center text-xs text-text-subtle" data-i18n="board.modal.loadingMembers">Loading members...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create Issue Modal -->
+    <div id="createIssueModal" class="fixed inset-0 bg-black/60 hidden flex items-center justify-center z-50 p-4">
+        <div class="bg-surface-container-lowest rounded-xl shadow-2xl w-full max-w-md p-6 border border-border animate-fade-in relative">
+            <div class="flex justify-between items-center mb-4 pb-3 border-b border-border">
+                <h3 class="font-headline-sm text-lg text-text-main flex items-center gap-2">
+                    <span class="material-symbols-outlined text-primary">add_task</span>
+                    <span data-i18n="issues.modal.title">Create Issue</span>
+                </h3>
+                <button onclick="closeCreateIssueModal()" class="text-text-subtle hover:text-text-main cursor-pointer">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
+
+            <div id="createIssueError" class="hidden mb-4 p-3 bg-danger/10 text-danger border border-danger/20 rounded-lg text-sm"></div>
+
+            <form id="createIssueForm" class="space-y-4">
+                <div>
+                    <label class="block font-label-bold text-text-subtle text-xs mb-1"><span data-i18n="issues.modal.summary">Title / Summary</span> <span class="text-danger">*</span></label>
+                    <input type="text" id="modalIssueTitle" required maxlength="200" data-i18n="issues.modal.summaryPlaceholder" placeholder="e.g. Implement refresh token mechanism" class="w-full border border-border rounded-lg px-3 py-2 bg-surface-container-low text-text-main text-xs focus:outline-none focus:border-primary"/>
+                </div>
+
+                <div>
+                    <label class="block font-label-bold text-text-subtle text-xs mb-1" data-i18n="issues.modal.desc">Description</label>
+                    <textarea id="modalIssueDesc" rows="3" data-i18n="issues.modal.descPlaceholder" placeholder="Detailed requirements..." class="w-full border border-border rounded-lg px-3 py-2 bg-surface-container-low text-text-main text-xs focus:outline-none focus:border-primary"></textarea>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block font-label-bold text-text-subtle text-xs mb-1" data-i18n="issues.modal.priority">Priority</label>
+                        <select id="modalIssuePriority" class="w-full border border-border rounded-lg px-3 py-2 bg-surface-container-low text-text-main text-xs focus:outline-none focus:border-primary">
+                            <option value="MEDIUM" data-i18n="priority.medium" selected>Medium</option>
+                            <option value="HIGH" data-i18n="priority.high">High</option>
+                            <option value="LOW" data-i18n="priority.low">Low</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block font-label-bold text-text-subtle text-xs mb-1" data-i18n="issues.modal.dueDate">Due Date</label>
+                        <input type="date" id="modalIssueDueDate" class="w-full border border-border rounded-lg px-3 py-2 bg-surface-container-low text-text-main text-xs focus:outline-none focus:border-primary"/>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block font-label-bold text-text-subtle text-xs mb-1" data-i18n="issues.modal.assignee">Assignee / Người Phụ Trách</label>
+                    <select id="modalIssueAssignee" class="w-full border border-border rounded-lg px-3 py-2 bg-surface-container-low text-text-main text-xs focus:outline-none focus:border-primary">
+                        <option value="">Unassigned (Chưa gán)</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block font-label-bold text-text-subtle text-xs mb-1" data-i18n="labels.title">Nhãn / Labels</label>
+                    <div id="modalCreateLabelChips" class="flex flex-wrap gap-1.5 p-2 bg-surface-container-low border border-border rounded-lg min-h-[42px] items-center">
+                        <span class="text-xs text-text-subtle italic">Chưa có nhãn nào.</span>
+                    </div>
+                    <p class="text-[11px] text-text-subtle mt-1" data-i18n="labels.selectHint">Nhấp vào nhãn để chọn/bỏ chọn gắn vào công việc</p>
+                </div>
+
+                <div>
+                    <label class="block font-label-bold text-text-subtle text-xs mb-1">
+                        <span>Ảnh đính kèm / Attachments</span>
+                        <span class="text-text-subtle font-normal text-[11px]">(Tối đa 10 ảnh)</span>
+                    </label>
+                    <div class="flex items-center gap-2 mb-2">
+                        <input type="file" id="modalCreateIssueFiles" multiple accept="image/jpeg,image/png,image/webp,image/gif" class="hidden" onchange="onModalCreateFilesSelected(this)">
+                        <button type="button" onclick="document.getElementById('modalCreateIssueFiles').click()" class="text-xs px-3 py-1.5 bg-surface-container-low hover:bg-surface-container-high border border-border text-text-main rounded-lg font-medium transition-all cursor-pointer inline-flex items-center gap-1.5 shadow-xs active:scale-95">
+                            <span class="material-symbols-outlined text-[16px] text-primary">add_photo_alternate</span>
+                            <span>Chọn ảnh</span>
+                        </button>
+                        <span id="modalCreateFilesCountText" class="text-xs text-text-subtle">Chưa chọn ảnh nào</span>
+                    </div>
+                    <div id="modalCreateFilesPreview" class="flex flex-wrap gap-2"></div>
+                </div>
+
+                <div class="flex justify-end gap-3 pt-3 border-t border-border">
+                    <button type="button" onclick="closeCreateIssueModal()" class="px-4 py-2 text-text-subtle hover:bg-surface-container-low rounded-lg text-xs font-medium cursor-pointer" data-i18n="issues.modal.cancel">Cancel</button>
+                    <button type="submit" id="btnSubmitCreateIssue" class="px-4 py-2 bg-primary hover:bg-surface-tint text-on-primary rounded-lg text-xs font-semibold shadow-sm flex items-center gap-1.5 cursor-pointer">
+                        <span class="material-symbols-outlined text-[16px]">check</span>
+                        <span data-i18n="issues.modal.create">Create Issue</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Edit Project Modal -->
+    <div id="editProjectModal" class="fixed inset-0 bg-black/60 hidden flex items-center justify-center z-50 p-4">
+        <div class="bg-surface-container-lowest border border-border rounded-xl max-w-lg w-full p-6 shadow-2xl relative animate-fade-in">
+            <button onclick="closeEditProjectModal()" class="absolute top-4 right-4 text-text-subtle hover:text-text-main cursor-pointer">
+                <span class="material-symbols-outlined">close</span>
+            </button>
+            <h3 class="font-display-md text-display-md text-text-main mb-6" data-i18n="projects.editModal.title">Edit Project</h3>
+            
+            <div id="editProjectError" class="hidden mb-4 p-3 bg-danger/10 text-danger border border-danger/20 rounded-lg text-sm"></div>
+
+            <form id="editProjectForm">
+                <div class="mb-4">
+                    <label class="block font-label-bold text-text-subtle mb-1" data-i18n="projects.modal.key">Project Key</label>
+                    <input type="text" id="editProjectKey" class="w-full border border-border rounded px-3 py-2 bg-surface-container-high text-text-subtle cursor-not-allowed" disabled />
+                    <p class="text-[10px] text-text-subtle mt-1" data-i18n="projects.editModal.keyHint">Project key cannot be modified.</p>
+                </div>
+                <div class="mb-4">
+                    <label class="block font-label-bold text-text-subtle mb-1" data-i18n="projects.modal.name">Project Name</label>
+                    <input type="text" id="editProjectName" class="w-full border border-border rounded px-3 py-2 bg-surface-container-low text-text-main focus:outline-none focus:border-primary" required maxlength="150">
+                </div>
+                <div class="mb-4">
+                    <label class="block font-label-bold text-text-subtle mb-1" data-i18n="projects.modal.desc">Description</label>
+                    <textarea id="editProjectDesc" class="w-full border border-border rounded px-3 py-2 bg-surface-container-low text-text-main focus:outline-none focus:border-primary" rows="3" placeholder="What is this project about?"></textarea>
+                </div>
+                <div class="mb-6">
+                    <label class="block font-label-bold text-text-subtle mb-1" data-i18n="projects.modal.coverImage">Ảnh bìa dự án / Cover Image</label>
+                    <div class="flex items-center gap-3">
+                        <div id="editProjectCoverPreview" class="w-16 h-12 rounded-lg bg-surface-container-high border border-border flex items-center justify-center overflow-hidden shrink-0">
+                            <span class="material-symbols-outlined text-text-subtle text-[20px]">image</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <input type="file" id="editProjectCoverFile" accept="image/jpeg,image/png,image/webp,image/gif" class="hidden" onchange="previewEditProjectCover(this)">
+                            <button type="button" onclick="document.getElementById('editProjectCoverFile').click()" class="text-xs px-3 py-1.5 bg-primary/10 text-primary hover:bg-primary hover:text-white rounded-lg font-medium transition-all cursor-pointer inline-flex items-center gap-1.5 active:scale-95 shadow-xs">
+                                <span class="material-symbols-outlined text-[15px]">upload</span>
+                                <span id="editProjectCoverBtnText" data-i18n="projects.modal.changeCover">Thay ảnh bìa</span>
+                            </button>
+                            <button type="button" id="btnRemoveEditProjectCover" onclick="removeEditProjectCover()" class="hidden text-xs px-2.5 py-1.5 bg-danger/10 text-danger hover:bg-danger hover:text-white rounded-lg font-medium transition-all cursor-pointer active:scale-95" title="Xóa ảnh bìa">
+                                <span class="material-symbols-outlined text-[15px]">delete</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Cài đặt phân quyền nhận việc (Self-Assign Policy) -->
+                <div class="mb-6 p-3.5 bg-surface-container-low/70 rounded-xl border border-border">
+                    <div class="flex items-center gap-2 mb-3">
+                        <span class="material-symbols-outlined text-[18px] text-primary">assignment_ind</span>
+                        <h4 class="text-xs font-label-bold text-text-main uppercase tracking-wider">Chính sách nhận việc (Self-Assign)</h4>
+                    </div>
+
+                    <!-- Toggle 1: Tự nhận việc chưa gán -->
+                    <div class="flex items-center justify-between py-2 border-b border-border/50">
+                        <div class="pr-3">
+                            <span class="text-xs font-semibold text-text-main block">Tự nhận việc chưa gán</span>
+                            <span class="text-[11px] text-text-subtle block">Cho phép thành viên dự án chủ động nhận các công việc chưa có người phụ trách</span>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer shrink-0">
+                            <input type="checkbox" id="toggleSelfAssignUnassigned" class="sr-only peer" onchange="onToggleSelfAssignChange()">
+                            <div class="w-9 h-5 bg-surface-container-high peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary"></div>
+                        </label>
+                    </div>
+
+                    <!-- Toggle 2: Nhận lại việc đã có người -->
+                    <div id="containerToggleSelfAssignAny" class="flex items-center justify-between py-2 transition-opacity">
+                        <div class="pr-3">
+                            <span class="text-xs font-semibold text-text-main block">Nhận lại việc đã có người phụ trách</span>
+                            <span class="text-[11px] text-text-subtle block">Cho phép thành viên nhận lại công việc đang do người khác làm (kèm thông báo chuyển giao)</span>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer shrink-0">
+                            <input type="checkbox" id="toggleSelfAssignAny" class="sr-only peer">
+                            <div class="w-9 h-5 bg-surface-container-high peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary"></div>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="flex justify-end gap-3">
+                    <button type="button" onclick="closeEditProjectModal()" class="px-4 py-2 text-text-main hover:bg-surface-container-low rounded-lg transition-colors font-label-bold text-label-bold cursor-pointer" data-i18n="projects.modal.cancel">Cancel</button>
+                    <button type="submit" class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-surface-tint transition-colors font-label-bold text-label-bold shadow-sm cursor-pointer flex items-center gap-1.5" id="btnEditProjectSubmit">
+                        <span class="material-symbols-outlined text-[16px]">save</span>
+                        <span data-i18n="projects.editModal.save">Save Changes</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Delete Project Confirmation Modal -->
+    <div id="deleteProjectModal" class="fixed inset-0 bg-black/60 hidden flex items-center justify-center z-50 p-4">
+        <div class="bg-surface-container-lowest border border-border rounded-xl max-w-md w-full p-6 shadow-2xl relative animate-fade-in">
+            <button onclick="closeDeleteProjectModal()" class="absolute top-4 right-4 text-text-subtle hover:text-text-main cursor-pointer">
+                <span class="material-symbols-outlined">close</span>
+            </button>
+            <div class="flex items-center gap-3 mb-4 text-danger">
+                <div class="w-10 h-10 rounded-full bg-danger/10 flex items-center justify-center shrink-0">
+                    <span class="material-symbols-outlined text-danger text-[24px]">warning</span>
+                </div>
+                <h3 class="font-headline-md text-headline-md text-text-main" data-i18n="projects.deleteModal.title">Delete Project</h3>
+            </div>
+            
+            <p class="font-body-md text-text-subtle mb-2" data-i18n="projects.deleteModal.message">Are you sure you want to delete this project? All associated issues and comments will be permanently deleted. This action cannot be undone.</p>
+            <p class="font-semibold text-text-main text-base bg-surface-container-low p-2.5 rounded-lg border border-border mb-4 break-words" id="deleteProjectTargetName"></p>
+
+            <div id="deleteProjectError" class="hidden mb-4 p-3 bg-danger/10 text-danger border border-danger/20 rounded-lg text-sm"></div>
+
+            <div class="flex justify-end gap-3">
+                <button type="button" onclick="closeDeleteProjectModal()" class="px-4 py-2 text-text-main hover:bg-surface-container-low rounded-lg transition-colors font-label-bold text-label-bold cursor-pointer" data-i18n="projects.modal.cancel">Cancel</button>
+                <button type="button" onclick="confirmDeleteProject()" class="px-4 py-2 bg-danger text-white rounded-lg hover:bg-danger/80 transition-colors font-label-bold text-label-bold shadow-sm cursor-pointer flex items-center gap-1.5" id="btnConfirmDeleteProject">
+                    <span class="material-symbols-outlined text-[16px]">delete</span>
+                    <span data-i18n="projects.deleteModal.confirm">Delete Project</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+
+    <script src="js/i18n.js?v=4"></script>
+    <script src="js/app.js?v=7"></script>
+    <script src="js/sidebar.js?v=5"></script>
+    <script>
+        if (!Auth.isAuthenticated()) window.location.href = 'login.html';
+
+        const urlParams = new URLSearchParams(window.location.search);
+        let projectId = urlParams.get('projectId') || urlParams.get('project');
+        let currentProjectData = null;
+        let allBoardLabels = [];
+        let selectedBoardLabelId = '';
+        let modalCreateSelectedLabelIds = new Set();
+
+        async function loadUserProfile() {
+            try {
+                const user = await fetchApi('/auth/me');
+                if (user) {
+                    Auth.setUser(user);
+                    if (typeof applyUserRoleUI === 'function') {
+                        applyUserRoleUI(user);
+                    }
+                    if (currentProjectData) {
+                        applyBoardPermissions();
+                    }
+                }
+            } catch (err) {
+                console.error("Failed to load user info:", err);
+            }
+        }
+
+        function applyBoardPermissions() {
+            if (!currentProjectData) return;
+            const currentUser = Auth.getUser() || {};
+            const isAdmin = (typeof Auth.isAdmin === 'function' && Auth.isAdmin()) || currentUser.role === 'ADMIN' || currentUser.role?.name === 'ADMIN';
+            const currentUserId = currentUser.id || currentUser.userId;
+            const currentUserEmail = currentUser.email ? currentUser.email.toLowerCase() : null;
+
+            // Check if creator is PM
+            let isCreator = false;
+            if (currentProjectData.creator) {
+                const cId = currentProjectData.creator.id || currentProjectData.creator.userId;
+                const cEmail = currentProjectData.creator.email ? currentProjectData.creator.email.toLowerCase() : null;
+                if ((currentUserId && cId === currentUserId) || (currentUserEmail && cEmail && currentUserEmail === cEmail)) {
+                    isCreator = true;
+                }
+            }
+
+            // Check if member is PROJECT_MANAGER
+            const isPmMember = currentProjectData.members && currentProjectData.members.some(m => {
+                const u = m.user || m;
+                const mId = u.id || u.userId;
+                const mEmail = u.email ? u.email.toLowerCase() : null;
+                const roleName = m.projectRole?.name || m.projectRole;
+                return ((currentUserId && mId === currentUserId) || (currentUserEmail && mEmail && currentUserEmail === mEmail)) && roleName === 'PROJECT_MANAGER';
+            });
+
+            const isPm = isCreator || isPmMember;
+            const canManage = isAdmin || isPm;
+
+            if (canManage) {
+                document.getElementById('btnEditProject')?.classList.remove('hidden');
+                document.getElementById('btnDeleteProject')?.classList.remove('hidden');
+                document.getElementById('btnCreateIssue')?.classList.remove('hidden');
+            } else {
+                document.getElementById('btnEditProject')?.classList.add('hidden');
+                document.getElementById('btnDeleteProject')?.classList.add('hidden');
+                document.getElementById('btnCreateIssue')?.classList.add('hidden');
+            }
+        }
+
+        async function initBoard() {
+            await loadUserProfile();
+
+            if (!projectId) {
+                const projects = await fetchApi('/projects');
+                if (projects && projects.length > 0) {
+                    projectId = projects[0].id;
+                } else {
+                    alert("No projects available. Create one first.");
+                    window.location.href = 'projects.html';
+                    return;
+                }
+            }
+
+            await loadProjectDetails();
+            loadAllBoardLabels();
+            loadIssues();
+            setupDragAndDrop();
+            setupCandidateSearch();
+        }
+
+        async function loadAllBoardLabels() {
+            try {
+                allBoardLabels = await fetchApi('/labels') || [];
+                renderBoardLabelFilterDropdown();
+                renderBoardCreateLabelChips();
+            } catch (err) {
+                console.error("Failed to load labels:", err);
+            }
+        }
+
+        function renderBoardLabelFilterDropdown() {
+            const select = document.getElementById('boardLabelFilter');
+            if (!select) return;
+            const currentVal = select.value;
+            select.innerHTML = '<option value="" data-i18n="labels.filter.all">-- Tất cả nhãn --</option>';
+            allBoardLabels.forEach(lbl => {
+                const opt = document.createElement('option');
+                opt.value = lbl.id;
+                opt.textContent = lbl.name;
+                if (currentVal && String(lbl.id) === String(currentVal)) {
+                    opt.selected = true;
+                }
+                select.appendChild(opt);
+            });
+            if (window.i18n) i18n.applyTranslations();
+        }
+
+        function onBoardLabelFilterChange(labelId) {
+            selectedBoardLabelId = labelId;
+            loadIssues();
+        }
+
+        function renderBoardCreateLabelChips() {
+            const container = document.getElementById('modalCreateLabelChips');
+            if (!container) return;
+            if (!allBoardLabels || allBoardLabels.length === 0) {
+                container.innerHTML = '<span class="text-xs text-text-subtle italic">Chưa có nhãn nào.</span>';
+                return;
+            }
+
+            container.innerHTML = allBoardLabels.map(lbl => {
+                const isSelected = modalCreateSelectedLabelIds.has(lbl.id);
+                const style = (typeof LabelUtils !== 'undefined' && LabelUtils.getColorStyle) 
+                    ? LabelUtils.getColorStyle(lbl.name) 
+                    : { bg: '#e5e7eb', text: '#374151', border: '#d1d5db', light: { bg: '#e5e7eb', text: '#374151', border: '#d1d5db' }, dark: { bg: '#1F2937', text: '#9CA3AF', border: '#374151' } };
+                const light = style.light || style;
+                const dark = style.dark || style;
+                return `
+                    <button type="button" onclick="toggleBoardCreateLabel(${lbl.id})"
+                        class="label-chip px-2.5 py-1 rounded-full text-xs font-medium cursor-pointer transition-all border flex items-center gap-1.5 ${isSelected ? 'ring-2 ring-primary ring-offset-1 font-bold shadow-xs' : 'opacity-70 hover:opacity-100'}"
+                        style="--lbl-bg: ${light.bg}; --lbl-text: ${light.text}; --lbl-border: ${light.border}; --lbl-dark-bg: ${dark.bg}; --lbl-dark-text: ${dark.text}; --lbl-dark-border: ${dark.border}; background-color: ${style.bg}; color: ${style.text}; border-color: ${style.border}">
+                        <span class="material-symbols-outlined text-[13px]">${isSelected ? 'check_circle' : 'label'}</span>
+                        <span>${lbl.name}</span>
+                    </button>
+                `;
+            }).join('');
+        }
+
+        function toggleBoardCreateLabel(labelId) {
+            if (modalCreateSelectedLabelIds.has(labelId)) {
+                modalCreateSelectedLabelIds.delete(labelId);
+            } else {
+                modalCreateSelectedLabelIds.add(labelId);
+            }
+            renderBoardCreateLabelChips();
+        }
+
+        async function loadProjectDetails() {
+            try {
+                currentProjectData = await fetchApi(`/projects/${projectId}`);
+                document.getElementById('projectNameBreadcrumb').textContent = currentProjectData.name;
+                document.getElementById('projectTitle').textContent = currentProjectData.name;
+                document.getElementById('projectDesc').textContent = currentProjectData.description || 'Manage issues for ' + currentProjectData.key;
+                
+                // Hiển thị ảnh bìa nếu có
+                const banner = document.getElementById('boardCoverBanner');
+                if (banner) {
+                    if (currentProjectData.coverImageUrl) {
+                        banner.style.backgroundImage = `url('${currentProjectData.coverImageUrl}')`;
+                        banner.classList.remove('hidden');
+                    } else {
+                        banner.classList.add('hidden');
+                    }
+                }
+
+                renderMemberAvatars(currentProjectData.members || []);
+                applyBoardPermissions();
+            } catch(e) {
+                console.error("Failed to load project details", e);
+            }
+        }
+
+        // ================= Project Edit & Delete =================
+        let editCoverFile = null;
+        let editCoverRemoved = false;
+
+        function previewEditProjectCover(input) {
+            const file = input.files && input.files[0];
+            if (!file) return;
+            editCoverFile = file;
+            editCoverRemoved = false;
+            const preview = document.getElementById('editProjectCoverPreview');
+            const btnRemove = document.getElementById('btnRemoveEditProjectCover');
+            preview.innerHTML = `<img src="${URL.createObjectURL(file)}" class="w-full h-full object-cover" />`;
+            btnRemove.classList.remove('hidden');
+            const btnText = document.getElementById('editProjectCoverBtnText');
+            if (btnText) {
+                btnText.setAttribute('data-i18n', 'projects.modal.changeCover');
+                btnText.textContent = (typeof I18n !== 'undefined' && I18n.currentLang === 'vi') ? 'Thay ảnh bìa' : 'Change Cover Image';
+            }
+        }
+
+        function removeEditProjectCover() {
+            const input = document.getElementById('editProjectCoverFile');
+            if (input) input.value = '';
+            editCoverFile = null;
+            editCoverRemoved = true;
+            const preview = document.getElementById('editProjectCoverPreview');
+            if (preview) preview.innerHTML = `<span class="material-symbols-outlined text-text-subtle text-[20px]">image</span>`;
+            const btnRemove = document.getElementById('btnRemoveEditProjectCover');
+            if (btnRemove) btnRemove.classList.add('hidden');
+            const btnText = document.getElementById('editProjectCoverBtnText');
+            if (btnText) {
+                btnText.setAttribute('data-i18n', 'projects.modal.chooseCover');
+                btnText.textContent = (typeof I18n !== 'undefined' && I18n.currentLang === 'vi') ? 'Chọn ảnh bìa' : 'Choose Cover Image';
+            }
+        }
+
+        function openEditProjectModal() {
+            if (!currentProjectData) return;
+            document.getElementById('editProjectKey').value = currentProjectData.key;
+            document.getElementById('editProjectName').value = currentProjectData.name || '';
+            document.getElementById('editProjectDesc').value = currentProjectData.description || '';
+            document.getElementById('editProjectError').classList.add('hidden');
+
+            editCoverFile = null;
+            editCoverRemoved = false;
+            const fileInput = document.getElementById('editProjectCoverFile');
+            if (fileInput) fileInput.value = '';
+
+            const preview = document.getElementById('editProjectCoverPreview');
+            const btnRemove = document.getElementById('btnRemoveEditProjectCover');
+            const btnText = document.getElementById('editProjectCoverBtnText');
+
+            if (currentProjectData.coverImageUrl) {
+                preview.innerHTML = `<img src="${currentProjectData.coverImageUrl}" class="w-full h-full object-cover" />`;
+                btnRemove.classList.remove('hidden');
+                if (btnText) {
+                    btnText.setAttribute('data-i18n', 'projects.modal.changeCover');
+                    btnText.textContent = (typeof I18n !== 'undefined' && I18n.currentLang === 'vi') ? 'Thay ảnh bìa' : 'Change Cover Image';
+                }
+            } else {
+                preview.innerHTML = `<span class="material-symbols-outlined text-text-subtle text-[20px]">image</span>`;
+                btnRemove.classList.add('hidden');
+                if (btnText) {
+                    btnText.setAttribute('data-i18n', 'projects.modal.chooseCover');
+                    btnText.textContent = (typeof I18n !== 'undefined' && I18n.currentLang === 'vi') ? 'Chọn ảnh bìa' : 'Choose Cover Image';
+                }
+            }
+
+            // Sync Self-Assign Policy toggles
+            const policy = currentProjectData.selfAssignPolicy || 'UNASSIGNED_ONLY';
+            const toggle1 = document.getElementById('toggleSelfAssignUnassigned');
+            const toggle2 = document.getElementById('toggleSelfAssignAny');
+            if (toggle1 && toggle2) {
+                if (policy === 'NONE') {
+                    toggle1.checked = false;
+                    toggle2.checked = false;
+                } else if (policy === 'ANY') {
+                    toggle1.checked = true;
+                    toggle2.checked = true;
+                } else {
+                    toggle1.checked = true;
+                    toggle2.checked = false;
+                }
+                onToggleSelfAssignChange();
+            }
+
+            document.getElementById('editProjectModal').classList.remove('hidden');
+            if (window.i18n) i18n.applyTranslations();
+        }
+
+        function onToggleSelfAssignChange() {
+            const toggle1 = document.getElementById('toggleSelfAssignUnassigned');
+            const toggle2 = document.getElementById('toggleSelfAssignAny');
+            const container2 = document.getElementById('containerToggleSelfAssignAny');
+            if (!toggle1 || !toggle2 || !container2) return;
+
+            if (!toggle1.checked) {
+                toggle2.checked = false;
+                toggle2.disabled = true;
+                container2.classList.add('opacity-40', 'pointer-events-none');
+            } else {
+                toggle2.disabled = false;
+                container2.classList.remove('opacity-40', 'pointer-events-none');
+            }
+        }
+
+        function closeEditProjectModal() {
+            document.getElementById('editProjectModal').classList.add('hidden');
+            editCoverFile = null;
+            editCoverRemoved = false;
+        }
+
+        document.getElementById('editProjectForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const submitBtn = document.getElementById('btnEditProjectSubmit');
+            const errorDiv = document.getElementById('editProjectError');
+
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span class="material-symbols-outlined animate-spin" style="font-size:16px; animation: spin 1s linear infinite;">progress_activity</span> Saving...';
+            errorDiv.classList.add('hidden');
+
+            const payload = {
+                name: document.getElementById('editProjectName').value.trim(),
+                description: document.getElementById('editProjectDesc').value.trim()
+            };
+
+            try {
+                const updated = await fetchApi(`/projects/${projectId}`, {
+                    method: 'PUT',
+                    body: JSON.stringify(payload)
+                });
+
+                // Cập nhật cài đặt Self-Assign Policy qua endpoint riêng PATCH /api/projects/{projectId}/settings
+                const toggle1 = document.getElementById('toggleSelfAssignUnassigned');
+                const toggle2 = document.getElementById('toggleSelfAssignAny');
+                let newPolicy = 'NONE';
+                if (toggle1 && toggle1.checked) {
+                    newPolicy = (toggle2 && toggle2.checked) ? 'ANY' : 'UNASSIGNED_ONLY';
+                }
+
+                if (newPolicy !== currentProjectData.selfAssignPolicy) {
+                    const settingsRes = await fetchApi(`/projects/${projectId}/settings`, {
+                        method: 'PATCH',
+                        body: JSON.stringify({ selfAssignPolicy: newPolicy })
+                    });
+                    if (settingsRes && settingsRes.selfAssignPolicy) {
+                        currentProjectData.selfAssignPolicy = settingsRes.selfAssignPolicy;
+                    }
+                }
+
+                if (editCoverFile) {
+                    const formData = new FormData();
+                    formData.append('file', editCoverFile);
+                    const res = await fetchApi(`/images/projects/${projectId}`, {
+                        method: 'POST',
+                        body: formData
+                    });
+                    if (res && res.url) {
+                        currentProjectData.coverImageUrl = res.url;
+                    }
+                } else if (editCoverRemoved) {
+                    await fetchApi(`/images/projects/${projectId}/cover`, {
+                        method: 'DELETE'
+                    });
+                    currentProjectData.coverImageUrl = null;
+                }
+
+                currentProjectData.name = updated.name;
+                currentProjectData.description = updated.description;
+                document.getElementById('projectNameBreadcrumb').textContent = updated.name;
+                document.getElementById('projectTitle').textContent = updated.name;
+                document.getElementById('projectDesc').textContent = updated.description || 'Manage issues for ' + currentProjectData.key;
+
+                const banner = document.getElementById('boardCoverBanner');
+                if (banner) {
+                    if (currentProjectData.coverImageUrl) {
+                        banner.style.backgroundImage = `url('${currentProjectData.coverImageUrl}')`;
+                        banner.classList.remove('hidden');
+                    } else {
+                        banner.classList.add('hidden');
+                    }
+                }
+
+                closeEditProjectModal();
+            } catch (err) {
+                errorDiv.textContent = err.message || 'Failed to update project.';
+                errorDiv.classList.remove('hidden');
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<span class="material-symbols-outlined text-[16px]">save</span> Save Changes';
+                if (window.i18n) i18n.applyTranslations();
+            }
+        });
+
+        function openDeleteProjectModal() {
+            if (!currentProjectData) return;
+            document.getElementById('deleteProjectTargetName').textContent = `[${currentProjectData.key}] ${currentProjectData.name}`;
+            document.getElementById('deleteProjectError').classList.add('hidden');
+            document.getElementById('deleteProjectModal').classList.remove('hidden');
+            if (window.i18n) i18n.applyTranslations();
+        }
+
+        function closeDeleteProjectModal() {
+            document.getElementById('deleteProjectModal').classList.add('hidden');
+        }
+
+        async function confirmDeleteProject() {
+            if (!projectId) return;
+
+            const submitBtn = document.getElementById('btnConfirmDeleteProject');
+            const errorDiv = document.getElementById('deleteProjectError');
+
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span class="material-symbols-outlined animate-spin" style="font-size:16px; animation: spin 1s linear infinite;">progress_activity</span> Deleting...';
+            errorDiv.classList.add('hidden');
+
+            try {
+                await fetchApi(`/projects/${projectId}`, {
+                    method: 'DELETE'
+                });
+                closeDeleteProjectModal();
+                window.location.href = 'projects.html';
+            } catch (err) {
+                errorDiv.textContent = err.message || 'Failed to delete project.';
+                errorDiv.classList.remove('hidden');
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<span class="material-symbols-outlined text-[16px]">delete</span> Delete Project';
+                if (window.i18n) i18n.applyTranslations();
+            }
+        }
+
+        function renderMemberAvatars(members) {
+            const container = document.getElementById('memberAvatarList');
+            if (!members || members.length === 0) {
+                container.innerHTML = '';
+                return;
+            }
+
+            const visibleMembers = members.slice(0, 4);
+            const extraCount = members.length - 4;
+
+            container.innerHTML = visibleMembers.map(m => {
+                const name = m.user ? (m.user.fullName || m.user.email || 'Member') : 'Member';
+                const initial = name.charAt(0).toUpperCase();
+                const avatar = (m.user && m.user.avatarUrl)
+                    ? `<img src="${m.user.avatarUrl}" class="w-full h-full rounded-full object-cover" />`
+                    : initial;
+                return `
+                    <div class="w-7 h-7 rounded-full bg-primary text-white border-2 border-surface-container-lowest dark:border-inverse-surface flex items-center justify-center text-[10px] font-bold shadow-sm overflow-hidden" title="${name} (${m.projectRole})">
+                        ${avatar}
+                    </div>
+                `;
+            }).join('') + (extraCount > 0 ? `
+                <div class="w-7 h-7 rounded-full bg-surface-container-high text-text-subtle border-2 border-surface-container-lowest dark:border-inverse-surface flex items-center justify-center text-[10px] font-bold shadow-sm">
+                    +${extraCount}
+                </div>
+            ` : '');
+        }
+
+        // ================= Member Management =================
+        let candidateSearchTimer = null;
+
+        function clearSelectedCandidate() {
+            const input = document.getElementById('memberSearchInput');
+            const hiddenId = document.getElementById('newMemberUserId');
+            const clearBtn = document.getElementById('btnClearCandidate');
+            const dropdown = document.getElementById('candidateDropdownList');
+
+            if (input) {
+                input.value = '';
+                input.readOnly = false;
+            }
+            if (hiddenId) hiddenId.value = '';
+            if (clearBtn) clearBtn.classList.add('hidden');
+            if (dropdown) {
+                dropdown.innerHTML = '';
+                dropdown.classList.add('hidden');
+            }
+        }
+
+        function selectCandidate(id, fullName, email) {
+            const input = document.getElementById('memberSearchInput');
+            const hiddenId = document.getElementById('newMemberUserId');
+            const clearBtn = document.getElementById('btnClearCandidate');
+            const dropdown = document.getElementById('candidateDropdownList');
+
+            if (hiddenId) hiddenId.value = id;
+            if (input) {
+                input.value = `${fullName || 'User'} — ${email}`;
+                input.readOnly = true;
+            }
+            if (clearBtn) clearBtn.classList.remove('hidden');
+            if (dropdown) dropdown.classList.add('hidden');
+        }
+
+        async function fetchCandidateMembers(query) {
+            const dropdown = document.getElementById('candidateDropdownList');
+            if (!dropdown) return;
+
+            dropdown.innerHTML = '<div class="p-3 text-center text-xs text-text-subtle">Đang tìm kiếm...</div>';
+            dropdown.classList.remove('hidden');
+
+            try {
+                const candidates = await fetchApi(`/projects/${projectId}/members/search-candidates?q=${encodeURIComponent(query)}&limit=10`);
+                if (!candidates || candidates.length === 0) {
+                    dropdown.innerHTML = '<div class="p-3 text-center text-xs text-text-subtle">Không tìm thấy người dùng phù hợp</div>';
+                    return;
+                }
+
+                dropdown.innerHTML = candidates.map(user => {
+                    const name = (user.fullName || 'User').replace(/"/g, '&quot;');
+                    const email = (user.email || '').replace(/"/g, '&quot;');
+                    const safeNameForJs = name.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+                    const safeEmailForJs = email.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+                    const initial = (user.fullName || user.email || 'U').charAt(0).toUpperCase();
+                    const avatarHtml = user.avatarUrl 
+                        ? `<img src="${user.avatarUrl}" class="w-8 h-8 rounded-full object-cover shrink-0" onerror="this.outerHTML='<span class=\\'font-bold text-xs\\'>${initial}</span>'" />`
+                        : `<div class="w-8 h-8 rounded-full bg-primary/10 text-primary font-bold text-xs flex items-center justify-center shrink-0 border border-primary/20">${initial}</div>`;
+                    return `
+                        <div class="candidate-item p-3 hover:bg-surface-container-low dark:hover:bg-inverse-surface cursor-pointer flex items-center justify-between gap-3 text-sm transition-colors"
+                             onclick="selectCandidate(${user.id}, '${safeNameForJs}', '${safeEmailForJs}')">
+                            <div class="flex items-center gap-3 min-w-0">
+                                ${avatarHtml}
+                                <div class="min-w-0">
+                                    <div class="font-semibold text-text-main text-xs truncate">${name}</div>
+                                    <div class="text-[11px] text-text-subtle truncate">${email}</div>
+                                </div>
+                            </div>
+                            <span class="material-symbols-outlined text-[20px] text-primary shrink-0 opacity-70 group-hover:opacity-100">person_add</span>
+                        </div>
+                    `;
+                }).join('');
+            } catch (err) {
+                console.error("Candidate search failed", err);
+                dropdown.innerHTML = '<div class="p-3 text-center text-xs text-danger">Lỗi khi tìm kiếm người dùng</div>';
+            }
+        }
+
+        function setupCandidateSearch() {
+            const input = document.getElementById('memberSearchInput');
+            const clearBtn = document.getElementById('btnClearCandidate');
+            const dropdown = document.getElementById('candidateDropdownList');
+
+            if (input) {
+                input.addEventListener('input', (e) => {
+                    const q = e.target.value.trim();
+                    clearTimeout(candidateSearchTimer);
+                    if (!q) {
+                        if (dropdown) dropdown.classList.add('hidden');
+                        return;
+                    }
+                    candidateSearchTimer = setTimeout(() => {
+                        fetchCandidateMembers(q);
+                    }, 300);
+                });
+
+                input.addEventListener('focus', () => {
+                    const q = input.value.trim();
+                    if (q && !input.readOnly && dropdown && dropdown.children.length > 0) {
+                        dropdown.classList.remove('hidden');
+                    }
+                });
+            }
+
+            if (clearBtn) {
+                clearBtn.addEventListener('click', () => {
+                    clearSelectedCandidate();
+                    if (input) input.focus();
+                });
+            }
+
+            document.addEventListener('click', (e) => {
+                const searchContainer = document.getElementById('memberSearchInput')?.closest('.relative');
+                if (searchContainer && !searchContainer.contains(e.target)) {
+                    dropdown?.classList.add('hidden');
+                }
+            });
+        }
+
+        function checkCanManageMembers() {
+            const currentUser = Auth.getUser() || {};
+            const isAdmin = Auth.isAdmin();
+            const isPm = currentProjectData && currentProjectData.members && currentProjectData.members.some(m => {
+                const u = m.user || m;
+                const roleName = m.projectRole?.name || m.projectRole;
+                return (u.id === currentUser.id || u.email === currentUser.email) && roleName === 'PROJECT_MANAGER';
+            });
+            return isAdmin || isPm;
+        }
+
+        function openMemberModal() {
+            if (!currentProjectData) return;
+            document.getElementById('memberModalSubtitle').textContent = `Manage members for [${currentProjectData.key}] ${currentProjectData.name}`;
+            document.getElementById('memberAlert').className = 'hidden mb-4 p-3 rounded-lg text-sm';
+            
+            const canManage = checkCanManageMembers();
+            renderMemberListModal(currentProjectData.members || []);
+
+            const addSection = document.getElementById('addMemberSection');
+            if (addSection) {
+                if (canManage) {
+                    addSection.classList.remove('hidden');
+                    clearSelectedCandidate();
+                } else {
+                    addSection.classList.add('hidden');
+                }
+            }
+            document.getElementById('memberModal').classList.remove('hidden');
+        }
+
+        function closeMemberModal() {
+            document.getElementById('memberModal').classList.add('hidden');
+            clearSelectedCandidate();
+            document.getElementById('addMemberForm').reset();
+        }
+
+        function renderMemberListModal(members) {
+            const body = document.getElementById('memberTableBody');
+            if (!members || members.length === 0) {
+                body.innerHTML = '<div class="p-4 text-center text-xs text-text-subtle">No members in this project yet.</div>';
+                return;
+            }
+
+            const currentUser = Auth.getUser() || {};
+            const isAdmin = Auth.isAdmin();
+            const canManage = checkCanManageMembers();
+
+            body.innerHTML = members.map(m => {
+                const u = m.user || {};
+                const initial = (u.fullName || u.email || 'U').charAt(0).toUpperCase();
+                const isSelf = (u.id === currentUser.id || u.email === currentUser.email);
+                const canChangeRole = canManage && (isAdmin || !isSelf);
+                const canRemove = canManage && (isAdmin || !isSelf);
+
+                const memberAvatarHtml = (u.avatarUrl)
+                    ? `<img src="${u.avatarUrl}" class="w-full h-full rounded-full object-cover" onerror="this.outerHTML='<span class=\\'font-bold text-xs\\'>${initial}</span>'" loading="lazy" />`
+                    : initial;
+
+                return `
+                    <div class="flex items-center justify-between p-3 hover:bg-surface-container-low dark:hover:bg-inverse-surface transition-colors">
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center font-bold text-xs shrink-0 overflow-hidden">
+                                ${memberAvatarHtml}
+                            </div>
+                            <div>
+                                <div class="text-xs font-semibold text-text-main flex items-center gap-1.5">
+                                    <span>${u.fullName || 'User'}</span>
+                                    <span class="text-[10px] text-text-subtle font-mono">(ID: ${u.id})</span>
+                                    ${isSelf ? '<span class="bg-primary/15 text-primary text-[10px] font-bold px-1.5 py-0.2 rounded border border-primary/30">You</span>' : ''}
+                                </div>
+                                <div class="text-[11px] text-text-subtle">${u.email || ''}</div>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            ${canChangeRole ? `
+                                <select onchange="changeRole(${u.id}, this.value)" class="text-xs border border-border dark:border-outline-variant rounded px-2 py-1 bg-surface-container-lowest dark:bg-inverse-surface text-text-main focus:outline-none focus:border-primary cursor-pointer">
+                                    <option value="1" ${m.projectRole === 'PROJECT_MANAGER' ? 'selected' : ''}>PROJECT_MANAGER</option>
+                                    <option value="2" ${m.projectRole === 'DEVELOPER' ? 'selected' : ''}>DEVELOPER</option>
+                                    <option value="4" ${m.projectRole === 'TESTER' ? 'selected' : ''}>TESTER</option>
+                                    <option value="5" ${m.projectRole === 'BA' ? 'selected' : ''}>BA</option>
+                                    <option value="3" ${m.projectRole === 'REPORTER' ? 'selected' : ''}>REPORTER</option>
+                                </select>
+                            ` : `
+                                <span class="text-xs font-semibold text-text-subtle px-2.5 py-1 bg-surface-container-high rounded cursor-not-allowed border border-border" title="Project Manager không thể tự đổi role của chính mình">${m.projectRole}</span>
+                            `}
+
+                            ${canRemove ? `
+                                <button onclick="removeMember(${u.id}, '${u.fullName || u.email}')" class="p-1 text-text-subtle hover:text-danger rounded hover:bg-danger/10 transition-colors cursor-pointer" title="Remove Member">
+                                    <span class="material-symbols-outlined text-[18px]">delete</span>
+                                </button>
+                            ` : `
+                                <button disabled class="p-1 text-text-subtle/30 cursor-not-allowed rounded" title="Project Manager không thể tự xóa chính mình khỏi dự án">
+                                    <span class="material-symbols-outlined text-[18px]">delete</span>
+                                </button>
+                            `}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        async function changeRole(userId, newRoleId) {
+            const currentUser = Auth.getUser() || {};
+            const isAdmin = Auth.isAdmin();
+            if (!isAdmin && (userId === currentUser.id)) {
+                const alertBox = document.getElementById('memberAlert');
+                alertBox.className = 'mb-4 p-2.5 rounded-lg text-xs bg-danger/10 text-danger border border-danger/20 block';
+                alertBox.textContent = 'Project Manager không thể tự đổi role của chính mình trong dự án.';
+                return;
+            }
+
+            const alertBox = document.getElementById('memberAlert');
+            alertBox.className = 'hidden';
+            try {
+                await fetchApi(`/projects/${projectId}/members/${userId}`, {
+                    method: 'PUT',
+                    body: JSON.stringify({ projectRoleId: parseInt(newRoleId) })
+                });
+                alertBox.className = 'mb-4 p-2.5 rounded-lg text-xs bg-success/10 text-success border border-success/20 block';
+                alertBox.textContent = 'Role updated successfully!';
+                await loadProjectDetails();
+                renderMemberListModal(currentProjectData.members || []);
+            } catch (err) {
+                alertBox.className = 'mb-4 p-2.5 rounded-lg text-xs bg-danger/10 text-danger border border-danger/20 block';
+                alertBox.textContent = err.message || 'Failed to update member role';
+            }
+        }
+
+        async function removeMember(userId, name) {
+            const currentUser = Auth.getUser() || {};
+            const isAdmin = Auth.isAdmin();
+            if (!isAdmin && (userId === currentUser.id)) {
+                const alertBox = document.getElementById('memberAlert');
+                alertBox.className = 'mb-4 p-2.5 rounded-lg text-xs bg-danger/10 text-danger border border-danger/20 block';
+                alertBox.textContent = 'Project Manager không thể tự xóa chính mình khỏi dự án.';
+                return;
+            }
+
+            if (!confirm(`Are you sure you want to remove ${name} from this project?`)) return;
+            const alertBox = document.getElementById('memberAlert');
+            alertBox.className = 'hidden';
+            try {
+                await fetchApi(`/projects/${projectId}/members/${userId}`, {
+                    method: 'DELETE'
+                });
+                alertBox.className = 'mb-4 p-2.5 rounded-lg text-xs bg-success/10 text-success border border-success/20 block';
+                alertBox.textContent = `Member removed successfully!`;
+                clearSelectedCandidate();
+                await loadProjectDetails();
+                renderMemberListModal(currentProjectData.members || []);
+            } catch (err) {
+                alertBox.className = 'mb-4 p-2.5 rounded-lg text-xs bg-danger/10 text-danger border border-danger/20 block';
+                alertBox.textContent = err.message || 'Failed to remove member';
+            }
+        }
+
+        document.getElementById('addMemberForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const alertBox = document.getElementById('memberAlert');
+            alertBox.className = 'hidden';
+
+            const userHidden = document.getElementById('newMemberUserId');
+            const userId = parseInt(userHidden ? userHidden.value : 0);
+            const projectRoleId = parseInt(document.getElementById('newMemberRoleId').value);
+
+            if (!userId) {
+                alertBox.className = 'mb-4 p-2.5 rounded-lg text-xs bg-danger/10 text-danger border border-danger/20 block';
+                alertBox.textContent = 'Vui lòng tìm và chọn một người dùng';
+                return;
+            }
+
+            const btn = document.getElementById('btnAddMember');
+            btn.disabled = true;
+
+            try {
+                await fetchApi(`/projects/${projectId}/members`, {
+                    method: 'POST',
+                    body: JSON.stringify({ userId, projectRoleId })
+                });
+                alertBox.className = 'mb-4 p-2.5 rounded-lg text-xs bg-success/10 text-success border border-success/20 block';
+                alertBox.textContent = 'Thêm thành viên vào dự án thành công!';
+                clearSelectedCandidate();
+                await loadProjectDetails();
+                renderMemberListModal(currentProjectData.members || []);
+            } catch (err) {
+                alertBox.className = 'mb-4 p-2.5 rounded-lg text-xs bg-danger/10 text-danger border border-danger/20 block';
+                alertBox.textContent = err.message || 'Failed to add member';
+            } finally {
+                btn.disabled = false;
+            }
+        });
+
+        // ================= Create Issue =================
+        let modalCreateIssueSelectedFiles = [];
+
+        function onModalCreateFilesSelected(input) {
+            const files = Array.from(input.files || []);
+            if (modalCreateIssueSelectedFiles.length + files.length > 10) {
+                alert("Chỉ được đính kèm tối đa 10 ảnh cho một công việc.");
+                input.value = '';
+                return;
+            }
+            modalCreateIssueSelectedFiles = modalCreateIssueSelectedFiles.concat(files);
+            renderModalCreateFilesPreview();
+            input.value = '';
+        }
+
+        function renderModalCreateFilesPreview() {
+            const container = document.getElementById('modalCreateFilesPreview');
+            const countText = document.getElementById('modalCreateFilesCountText');
+            if (!container) return;
+
+            if (modalCreateIssueSelectedFiles.length === 0) {
+                container.innerHTML = '';
+                if (countText) countText.textContent = 'Chưa chọn ảnh nào';
+                return;
+            }
+
+            if (countText) countText.textContent = `Đã chọn ${modalCreateIssueSelectedFiles.length} ảnh`;
+            container.innerHTML = modalCreateIssueSelectedFiles.map((file, idx) => `
+                <div class="relative group rounded-lg overflow-hidden border border-border bg-surface-container-high w-14 h-14 flex items-center justify-center">
+                    <img src="${URL.createObjectURL(file)}" class="w-full h-full object-cover" />
+                    <button type="button" onclick="removeModalCreateFile(${idx})" class="absolute top-0.5 right-0.5 w-4 h-4 bg-black/70 hover:bg-danger text-white rounded-full flex items-center justify-center text-[10px] cursor-pointer" title="Gỡ">×</button>
+                </div>
+            `).join('');
+        }
+
+        function removeModalCreateFile(idx) {
+            modalCreateIssueSelectedFiles.splice(idx, 1);
+            renderModalCreateFilesPreview();
+        }
+
+        function resetModalCreateFiles() {
+            modalCreateIssueSelectedFiles = [];
+            renderModalCreateFilesPreview();
+            const input = document.getElementById('modalCreateIssueFiles');
+            if (input) input.value = '';
+        }
+
+        function openCreateIssueModal() {
+            const currentUser = Auth.getUser() || {};
+            const isAdmin = Auth.isAdmin();
+            const isPm = currentProjectData?.members && currentProjectData.members.some(m => {
+                const u = m.user || m;
+                const roleName = m.projectRole?.name || m.projectRole;
+                return (u.id === currentUser.id || u.email === currentUser.email) && roleName === 'PROJECT_MANAGER';
+            });
+            if (!isAdmin && !isPm) {
+                alert("Chỉ Project Manager hoặc Admin mới có quyền tạo công việc trong dự án này.");
+                return;
+            }
+
+            document.getElementById('createIssueError').classList.add('hidden');
+            resetModalCreateFiles();
+            modalCreateSelectedLabelIds.clear();
+            renderBoardCreateLabelChips();
+            
+            // Set min date to today
+            const dueDateInput = document.getElementById('modalIssueDueDate');
+            if (dueDateInput) {
+                dueDateInput.min = new Date().toISOString().split('T')[0];
+            }
+
+            // Populate assignee dropdown from project members
+            const assigneeSelect = document.getElementById('modalIssueAssignee');
+            if (assigneeSelect) {
+                assigneeSelect.innerHTML = '<option value="">Unassigned (Chưa gán)</option>';
+                const members = currentProjectData && currentProjectData.members ? currentProjectData.members : [];
+                members.forEach(m => {
+                    const u = m.user || {};
+                    if (u.locked) return;
+                    const uName = u.fullName || u.email || 'User #' + u.id;
+                    const opt = document.createElement('option');
+                    opt.value = u.id;
+                    opt.textContent = `${uName} (${m.projectRole || 'MEMBER'})`;
+                    assigneeSelect.appendChild(opt);
+                });
+            }
+
+            document.getElementById('createIssueModal').classList.remove('hidden');
+        }
+
+        function closeCreateIssueModal() {
+            document.getElementById('createIssueModal').classList.add('hidden');
+            document.getElementById('createIssueForm').reset();
+            resetModalCreateFiles();
+            modalCreateSelectedLabelIds.clear();
+            renderBoardCreateLabelChips();
+        }
+
+        document.getElementById('createIssueForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const title = document.getElementById('modalIssueTitle').value;
+            const description = document.getElementById('modalIssueDesc').value;
+            const priority = document.getElementById('modalIssuePriority').value;
+            const dueDateValue = document.getElementById('modalIssueDueDate').value;
+            const assigneeVal = document.getElementById('modalIssueAssignee') ? document.getElementById('modalIssueAssignee').value : null;
+
+            const errBox = document.getElementById('createIssueError');
+            errBox.classList.add('hidden');
+
+            const todayStr = new Date().toISOString().split('T')[0];
+            if (dueDateValue && dueDateValue < todayStr) {
+                errBox.textContent = 'Deadline phải lớn hơn hoặc bằng thời gian hiện tại';
+                errBox.classList.remove('hidden');
+                return;
+            }
+
+            const btn = document.getElementById('btnSubmitCreateIssue');
+            btn.disabled = true;
+
+            try {
+                const payload = {
+                    title,
+                    description,
+                    priority,
+                    dueDate: dueDateValue ? (dueDateValue + 'T23:59:59') : null,
+                    assigneeId: assigneeVal ? parseInt(assigneeVal) : null,
+                    labelIds: Array.from(modalCreateSelectedLabelIds)
+                };
+
+                const createdIssue = await fetchApi(`/projects/${projectId}/issues`, {
+                    method: 'POST',
+                    body: JSON.stringify(payload)
+                });
+
+                // Nếu có đính kèm ảnh, upload ảnh ngay sau khi tạo công việc
+                if (modalCreateIssueSelectedFiles.length > 0 && createdIssue && createdIssue.id) {
+                    const formData = new FormData();
+                    modalCreateIssueSelectedFiles.forEach(f => formData.append('files', f));
+                    await fetchApi(`/images/issues/${createdIssue.id}`, {
+                        method: 'POST',
+                        body: formData
+                    });
+                }
+
+                closeCreateIssueModal();
+                loadIssues();
+            } catch (err) {
+                errBox.textContent = err.message || 'Failed to create issue';
+                errBox.classList.remove('hidden');
+            } finally {
+                btn.disabled = false;
+            }
+        });
+
+        let isDraggingCard = false;
+
+        async function loadIssues() {
+            try {
+                let url = `/projects/${projectId}/issues?size=100`;
+                if (selectedBoardLabelId) {
+                    url += `&labelId=${encodeURIComponent(selectedBoardLabelId)}`;
+                }
+                const data = await fetchApi(url);
+                const issues = data.content || [];
+                
+                ['TODO', 'IN_PROGRESS', 'REVIEW', 'DONE'].forEach(status => {
+                    const col = document.getElementById(`col-${status}`);
+                    if (col) col.innerHTML = '';
+                    const countEl = document.getElementById(`count-${status}`);
+                    if (countEl) countEl.textContent = '0';
+                });
+
+                const counts = { TODO: 0, IN_PROGRESS: 0, REVIEW: 0, DONE: 0 };
+
+                issues.forEach(issue => {
+                    const col = document.getElementById(`col-${issue.status}`);
+                    if (!col) return;
+                    counts[issue.status] = (counts[issue.status] || 0) + 1;
+
+                    const card = document.createElement('div');
+                    card.className = "issue-card bg-surface-container-lowest p-md rounded-lg shadow-card-base hover:shadow-card-hover border border-border transition-all group";
+                    card.draggable = true;
+                    card.dataset.id = issue.id;
+                    
+                    const avatarStr = issue.assignee ? ((issue.assignee.fullName || issue.assignee.email || 'U').charAt(0)).toUpperCase() : 'U';
+                    const assigneeName = issue.assignee ? (issue.assignee.fullName || issue.assignee.email) : 'Unassigned';
+                    
+                    let priorityIcon = 'keyboard_arrow_up';
+                    let priorityColor = 'text-warning';
+                    if(issue.priority === 'HIGH' || issue.priority === 'CRITICAL') {
+                        priorityIcon = 'keyboard_double_arrow_up';
+                        priorityColor = 'text-danger';
+                        card.classList.add('border-l-4', 'border-l-danger');
+                    } else if(issue.priority === 'LOW') {
+                        priorityIcon = 'keyboard_arrow_down';
+                        priorityColor = 'text-success';
+                    }
+
+                    const assigneeAvatarHtml = (issue.assignee && issue.assignee.avatarUrl)
+                        ? `<img src="${issue.assignee.avatarUrl}" class="w-full h-full object-cover rounded-full" onerror="this.outerHTML='<span class=\\'text-[10px] font-bold text-primary\\'>${avatarStr}</span>'" loading="lazy" />`
+                        : avatarStr;
+
+                    const labelsHtml = (issue.labels && issue.labels.length > 0)
+                        ? `<div class="flex flex-wrap gap-1 mb-2">
+                            ${Array.from(issue.labels).map(lbl => (typeof LabelUtils !== 'undefined') ? LabelUtils.renderBadge(lbl) : `<span class="text-[10px] px-1.5 py-0.5 rounded bg-surface-container-high">${lbl.name || lbl}</span>`).join('')}
+                           </div>`
+                        : '';
+
+                    card.innerHTML = `
+                        <div class="flex justify-between items-start mb-1">
+                            <span class="font-code text-code text-primary font-bold text-xs">${issue.issueKey || ('#' + issue.id)}</span>
+                        </div>
+                        <h4 class="font-body-md text-body-md text-text-main mb-2 line-clamp-2 break-words">${issue.title}</h4>
+                        ${labelsHtml}
+                        <div class="flex items-center justify-between mt-auto pt-2 border-t border-border/50 dark:border-outline-variant/50">
+                            <div class="w-6 h-6 rounded-full bg-primary/10 border border-border flex items-center justify-center text-[10px] font-bold text-primary shrink-0 overflow-hidden" title="${assigneeName}">${assigneeAvatarHtml}</div>
+                            <div class="flex items-center gap-sm">
+                                <span class="material-symbols-outlined text-[16px] ${priorityColor}">${priorityIcon}</span>
+                            </div>
+                        </div>
+                    `;
+
+                    card.addEventListener('click', (e) => {
+                        if (isDraggingCard) return;
+                        window.location.href = `issue-detail.html?projectId=${projectId}&issueId=${issue.id}`;
+                    });
+
+                    card.addEventListener('dragstart', (e) => {
+                        isDraggingCard = true;
+                        e.dataTransfer.setData('text/plain', issue.id);
+                        e.dataTransfer.effectAllowed = 'move';
+                        setTimeout(() => card.style.opacity = '0.4', 0);
+                    });
+                    
+                    card.addEventListener('dragend', () => {
+                        card.style.opacity = '1';
+                        setTimeout(() => { isDraggingCard = false; }, 150);
+                    });
+
+                    col.appendChild(card);
+                });
+
+                // Add empty zone placeholders if a column has no issues
+                ['TODO', 'IN_PROGRESS', 'REVIEW', 'DONE'].forEach(status => {
+                    const col = document.getElementById(`col-${status}`);
+                    if (col && col.children.length === 0) {
+                        const empty = document.createElement('div');
+                        empty.className = 'empty-zone-placeholder flex items-center justify-center h-24 border border-dashed border-border rounded-lg text-xs text-text-subtle pointer-events-none select-none';
+                        empty.textContent = 'Kéo thả issue vào đây';
+                        col.appendChild(empty);
+                    }
+                });
+
+                Object.keys(counts).forEach(status => {
+                    const el = document.getElementById(`count-${status}`);
+                    if (el) el.textContent = counts[status];
+                });
+
+            } catch (error) {
+                console.error("Failed to load issues", error);
+            }
+        }
+
+        function setupDragAndDrop() {
+            const dropZones = document.querySelectorAll('.column-drop-zone');
+            
+            dropZones.forEach(zone => {
+                zone.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = 'move';
+                    zone.classList.add('drag-over');
+                });
+
+                zone.addEventListener('dragenter', (e) => {
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = 'move';
+                    zone.classList.add('drag-over');
+                });
+
+                zone.addEventListener('dragleave', (e) => {
+                    if (!zone.contains(e.relatedTarget)) {
+                        zone.classList.remove('drag-over');
+                    }
+                });
+
+                zone.addEventListener('drop', async (e) => {
+                    e.preventDefault();
+                    zone.classList.remove('drag-over');
+                    
+                    const issueId = e.dataTransfer.getData('text/plain');
+                    const newStatus = zone.dataset.status;
+                    
+                    if (!issueId || !newStatus) return;
+
+                    const card = document.querySelector(`.issue-card[data-id="${issueId}"]`);
+                    if (card && card.parentElement !== zone) {
+                        if (newStatus === 'DONE') {
+                            const currentUser = Auth.getUser() || {};
+                            const isAdmin = Auth.isAdmin();
+                            const isPm = currentProjectData?.members && currentProjectData.members.some(m => {
+                                const u = m.user || m;
+                                const roleName = m.projectRole?.name || m.projectRole;
+                                return (u.id === currentUser.id || u.email === currentUser.email) && roleName === 'PROJECT_MANAGER';
+                            });
+                            if (!isAdmin && !isPm) {
+                                alert("Chỉ Project Manager hoặc Admin mới có quyền chuyển trạng thái sang Hoàn thành (DONE)");
+                                await loadIssues();
+                                return;
+                            }
+                        }
+
+                        const placeholder = zone.querySelector('.empty-zone-placeholder');
+                        if (placeholder) placeholder.remove();
+
+                        zone.appendChild(card);
+                        
+                        try {
+                            await fetchApi(`/projects/${projectId}/issues/${issueId}/status`, {
+                                method: 'PATCH',
+                                body: JSON.stringify({ newStatus: newStatus })
+                            });
+                            await loadIssues();
+                        } catch(err) {
+                            alert("Không thể chuyển trạng thái: " + (err.message || 'Transition not allowed'));
+                            await loadIssues();
+                        }
+                    }
+                });
+            });
+        }
+
+
+        document.addEventListener('DOMContentLoaded', initBoard);
+    </script>
+</body>
+</html>

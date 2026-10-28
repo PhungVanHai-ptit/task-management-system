@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="vi">
+<head>
+    <meta charset="UTF-8"/>
+    <title>Thông báo chuyển giao công việc</title>
+    <style>
+        body { font-family: Arial, sans-serif; background-color: #f4f4f4; margin: 0; padding: 0; }
+        .container { max-width: 600px; margin: 30px auto; background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        .header { background-color: #475569; padding: 24px; color: white; }
+        .header h1 { margin: 0; font-size: 22px; }
+        .body { padding: 28px; color: #333; line-height: 1.6; }
+        .issue-card { background: #f8fafc; border-left: 4px solid #64748b; padding: 16px; border-radius: 4px; margin: 20px 0; }
+        .issue-key { font-weight: bold; color: #334155; font-size: 16px; }
+        .footer { background: #f9f9f9; padding: 16px 28px; font-size: 12px; color: #888; border-top: 1px solid #eee; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h1>🔔 Mini Jira – Thông báo chuyển giao công việc</h1>
+    </div>
+    <div class="body">
+        <p>Xin chào <strong th:text="${recipientName}">Người dùng</strong>,</p>
+        <p>Công việc sau đây trong dự án <strong th:text="${projectKey}">PROJECT</strong> trước đây do bạn phụ trách đã được chuyển giao cho thành viên khác:</p>
+        <div class="issue-card">
+            <div class="issue-key" th:text="${issueKey}">PROJ-1</div>
+            <div th:text="${issueTitle}">Tiêu đề issue</div>
+        </div>
+        <div style="margin: 24px 0; text-align: center;">
+            <a th:href="${issueUrl}" style="background-color: #475569; color: #ffffff; padding: 12px 28px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 14px; display: inline-block;">
+                Xem Chi Tiết Công Việc →
+            </a>
+        </div>
+        <p style="font-size: 13px; color: #666; margin-top: 16px;">
+            Hoặc truy cập trực tiếp qua liên kết: <br/>
+            <a th:href="${issueUrl}" th:text="${issueUrl}" style="color: #475569; word-break: break-all;"></a>
+        </p>
+        <p>Trân trọng,<br/>Hệ thống Mini Jira</p>
+    </div>
+    <div class="footer">Email này được gửi tự động. Vui lòng không trả lời.</div>
+</div>
+</body>
+</html>

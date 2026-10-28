@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register - Mini Jira</title>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="css/style.css">
+    <script>
+        (function() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            if (savedTheme === 'dark') {
+                document.documentElement.classList.add('dark');
+                document.documentElement.setAttribute('data-theme', 'dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+                document.documentElement.setAttribute('data-theme', 'light');
+            }
+        })();
+    </script>
+    <style>
+        .error-message { color: var(--danger); font-size: 0.875rem; margin-bottom: 1rem; text-align: center; display: none; }
+        .success-message { color: var(--success); font-size: 0.875rem; margin-bottom: 1rem; text-align: center; display: none; }
+        
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        .animate-spin {
+            display: inline-block !important;
+            animation: spin 0.85s linear infinite !important;
+            vertical-align: middle;
+        }
+    </style>
+</head>
+<body>
+    <div class="auth-layout" style="position: relative;">
+        <!-- Top-Right Controls: Language & Theme -->
+        <div style="position: absolute; top: 1.5rem; right: 1.5rem; display: flex; align-items: center; gap: 0.75rem; z-index: 50;">
+            <div style="position: relative; display: inline-block;">
+                <select onchange="I18n.setLanguage(this.value)" class="lang-select input-field" style="padding: 6px 28px 6px 10px; font-size: 13px; cursor: pointer; appearance: none; height: auto;">
+                    <option value="en">🇬🇧 EN</option>
+                    <option value="vi">🇻🇳 VI</option>
+                </select>
+                <span class="material-symbols-outlined" style="position: absolute; right: 6px; top: 50%; transform: translateY(-50%); pointer-events: none; font-size: 16px; color: var(--text-muted);">expand_more</span>
+            </div>
+            <button type="button" onclick="toggleTheme()" class="btn btn-secondary" style="padding: 6px 10px; cursor: pointer;" title="Toggle Dark/Light Mode">
+                <span class="material-symbols-outlined" style="font-size: 20px;">dark_mode</span>
+            </button>
+        </div>
+
+        <div class="auth-card glass-panel animate-fade-in">
+            <div class="flex-center" style="margin-bottom: 1rem;">
+                <span class="material-symbols-outlined" style="font-size: 48px; color: var(--primary);">person_add</span>
+            </div>
+            <h1 data-i18n="auth.createAccount">Create Account</h1>
+            <p data-i18n="auth.registerSubtitle">Join Mini Jira to start managing your projects efficiently.</p>
+
+            <div id="errorMsg" class="error-message">Registration failed.</div>
+            <!-- Sau khi đăng ký: hiển thị thông báo kiểm tra email -->
+            <div id="successPanel" style="display:none; text-align:center; padding: 8px 0;">
+                <span class="material-symbols-outlined" style="font-size: 56px; color: #2563eb; display:block; margin-bottom: 12px;">mark_email_unread</span>
+                <h2 style="font-size: 1.2rem; margin-bottom: 8px;">Kiểm tra hộp thư của bạn! 📧</h2>
+                <p style="font-size: 0.9rem; color: var(--text-muted); line-height: 1.6;">
+                    Chúng tôi đã gửi email xác thực đến <strong id="registeredEmail"></strong>.<br/>
+                    Vui lòng click vào link trong email để kích hoạt tài khoản.<br/>
+                    <span style="font-size: 0.8rem; color: var(--text-muted);">Link có hiệu lực trong 24 giờ.</span>
+                </p>
+                <a href="login.html" class="btn btn-primary" style="margin-top: 20px; display:inline-flex; justify-content:center; gap: 6px;">
+                    <span class="material-symbols-outlined" style="font-size: 18px;">login</span>
+                    Đi đến trang đăng nhập
+                </a>
+            </div>
+
+            <form id="registerForm">
+                <div class="form-group">
+                    <label class="form-label" data-i18n="auth.fullName">Full Name</label>
+                    <input type="text" id="fullName" class="input-field" placeholder="John Doe" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" data-i18n="auth.email">Email Address</label>
+                    <input type="email" id="email" class="input-field" placeholder="you@example.com" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" data-i18n="auth.password">Password</label>
+                    <div class="password-input-wrapper">
+                        <input type="password" id="password" class="input-field" placeholder="••••••••" minlength="6" required>
+                        <button type="button" class="password-toggle-btn" onclick="togglePasswordVisibility('password', this)" title="Show password" tabindex="-1">
+                            <span class="material-symbols-outlined" style="font-size: 20px;">visibility</span>
+                        </button>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" data-i18n="auth.captcha.label">Mã xác thực</label>
+                    <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 8px;">
+                        <img id="captchaImage" src="" alt="Captcha" style="height: 42px; width: 130px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-surface); object-fit: contain; cursor: pointer;" title="Bấm để đổi mã khác" onclick="loadCaptcha()">
+                        <button type="button" class="btn btn-secondary" onclick="loadCaptcha()" style="padding: 0 12px; height: 42px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-surface); color: var(--text-color);" title="Đổi mã khác">
+                            <span id="captchaRefreshIcon" class="material-symbols-outlined" style="font-size: 20px;">refresh</span>
+                        </button>
+                    </div>
+                    <input type="hidden" id="captchaId">
+                    <input type="text" id="captchaCode" class="input-field" placeholder="Nhập ký tự trong ảnh..." required maxlength="6" autocomplete="off" style="text-transform: uppercase; letter-spacing: 2px; font-weight: 600;" data-i18n="auth.captcha.placeholder">
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%; justify-content: center; padding: 12px;">
+                    <span class="material-symbols-outlined" style="font-size: 20px;">app_registration</span>
+                    <span data-i18n="auth.signUp">Sign Up</span>
+                </button>
+            </form>
+            <div style="margin-top: 2rem; text-align: center; font-size: 14px; color: var(--text-muted);">
+                <span data-i18n="auth.alreadyHaveAccount">Already have an account?</span> <a href="login.html" data-i18n="auth.signIn">Sign in</a>
+            </div>
+        </div>
+    </div>
+    <script src="js/app.js?v=4"></script>
+    <script src="js/i18n.js?v=4"></script>
+    <script>
+        if (Auth.isAuthenticated()) window.location.href = 'projects.html';
+        // ---- Captcha loader ----
+        async function loadCaptcha() {
+            const refreshIcon = document.getElementById('captchaRefreshIcon');
+            if (refreshIcon) refreshIcon.classList.add('animate-spin');
+            try {
+                const res = await fetchApi('/auth/captcha');
+                if (res && res.captchaId) {
+                    document.getElementById('captchaId').value = res.captchaId;
+                    document.getElementById('captchaImage').src = res.captchaImage;
+                    const codeInput = document.getElementById('captchaCode');
+                    if (codeInput) codeInput.value = '';
+                }
+            } catch (err) {
+                console.error("Failed to load captcha:", err);
+            } finally {
+                if (refreshIcon) {
+                    setTimeout(() => refreshIcon.classList.remove('animate-spin'), 350);
+                }
+            }
+        }
+        loadCaptcha();
+
+        const registerForm = document.getElementById('registerForm');
+        const errorMsg = document.getElementById('errorMsg');
+        const successMsg = document.getElementById('successMsg');
+        const submitBtn = registerForm.querySelector('button[type="submit"]');
+
+        registerForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            errorMsg.style.display = 'none';
+
+            const isVi = (typeof I18n !== 'undefined' && I18n.currentLang === 'vi') || localStorage.getItem('app_lang') === 'vi';
+            const loadingText = isVi ? 'Đang tạo tài khoản...' : 'Signing up...';
+
+            submitBtn.disabled = true;
+            submitBtn.style.opacity = '0.9';
+            submitBtn.style.cursor = 'wait';
+            submitBtn.innerHTML = `<span class="material-symbols-outlined animate-spin" style="font-size: 20px; display: inline-block; animation: spin 0.85s linear infinite; vertical-align: middle; margin-right: 8px;">progress_activity</span><span>${loadingText}</span>`;
+
+            const fullName = document.getElementById('fullName').value.trim();
+            const email = document.getElementById('email').value.trim();
+            const password = document.getElementById('password').value;
+            const captchaId = document.getElementById('captchaId').value;
+            const captchaCode = document.getElementById('captchaCode').value.trim().toUpperCase();
+
+            try {
+                await fetchApi('/auth/register', {
+                    method: 'POST',
+                    body: JSON.stringify({ fullName, email, password, captchaId, captchaCode })
+                });
+
+                // Chuyển hướng sang thông báo đã gửi mail mượt mà
+                registerForm.style.display = 'none';
+                const bottomNav = document.querySelector('[style*="margin-top: 2rem"]');
+                if (bottomNav) bottomNav.style.display = 'none';
+
+                document.getElementById('registeredEmail').textContent = email;
+                const successPanel = document.getElementById('successPanel');
+                successPanel.classList.add('animate-fade-in');
+                successPanel.style.display = 'block';
+            } catch (error) {
+                loadCaptcha(); // Tự động đổi captcha khi lỗi
+                errorMsg.textContent = error.message || (isVi ? 'Đăng ký thất bại. Email có thể đã được sử dụng.' : 'Registration failed. Email might be already in use.');
+                errorMsg.style.display = 'block';
+                submitBtn.disabled = false;
+                submitBtn.style.opacity = '1';
+                submitBtn.style.cursor = 'pointer';
+                submitBtn.innerHTML = `<span class="material-symbols-outlined" style="font-size: 20px;">app_registration</span> <span data-i18n="auth.signUp">${typeof I18n !== 'undefined' ? I18n.t('auth.signUp') : (isVi ? 'Đăng ký ngay' : 'Sign Up')}</span>`;
+            }
+        });
+    </script>
+</body>
+</html>

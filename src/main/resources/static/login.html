@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Mini Jira</title>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="css/style.css">
+    <script>
+        (function() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            if (savedTheme === 'dark') {
+                document.documentElement.classList.add('dark');
+                document.documentElement.setAttribute('data-theme', 'dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+                document.documentElement.setAttribute('data-theme', 'light');
+            }
+        })();
+    </script>
+    <style>
+        .error-message {
+            color: var(--danger);
+            font-size: 0.875rem;
+            margin-bottom: 1rem;
+            text-align: center;
+            display: none;
+        }
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        .animate-spin {
+            display: inline-block !important;
+            animation: spin 0.85s linear infinite !important;
+            vertical-align: middle;
+        }
+        .alert-banner {
+            border-radius: 8px;
+            padding: 12px 16px;
+            margin-bottom: 1rem;
+            font-size: 0.875rem;
+            display: none;
+            align-items: flex-start;
+            gap: 8px;
+            text-align: left;
+            line-height: 1.5;
+        }
+        .alert-success {
+            background: #d1fae5;
+            color: #065f46;
+            border: 1px solid #6ee7b7;
+        }
+        .alert-warning {
+            background: #fef3c7;
+            color: #92400e;
+            border: 1px solid #fcd34d;
+        }
+        .alert-error {
+            background: #fee2e2;
+            color: #991b1b;
+            border: 1px solid #fca5a5;
+        }
+        .alert-info {
+            background: #eff6ff;
+            color: #1e40af;
+            border: 1px solid #bfdbfe;
+        }
+        .resend-link {
+            color: #2563eb;
+            cursor: pointer;
+            text-decoration: underline;
+            font-size: 0.8125rem;
+            background: none;
+            border: none;
+            padding: 0;
+        }
+        .resend-link:hover { color: #1d4ed8; }
+    </style>
+</head>
+<body>
+    <div class="auth-layout" style="position: relative;">
+        <!-- Top-Right Controls: Language & Theme -->
+        <div style="position: absolute; top: 1.5rem; right: 1.5rem; display: flex; align-items: center; gap: 0.75rem; z-index: 50;">
+            <div style="position: relative; display: inline-block;">
+                <select onchange="I18n.setLanguage(this.value)" class="lang-select input-field" style="padding: 6px 28px 6px 10px; font-size: 13px; cursor: pointer; appearance: none; height: auto;">
+                    <option value="en">🇬🇧 EN</option>
+                    <option value="vi">🇻🇳 VI</option>
+                </select>
+                <span class="material-symbols-outlined" style="position: absolute; right: 6px; top: 50%; transform: translateY(-50%); pointer-events: none; font-size: 16px; color: var(--text-muted);">expand_more</span>
+            </div>
+            <button type="button" onclick="toggleTheme()" class="btn btn-secondary" style="padding: 6px 10px; cursor: pointer;" title="Toggle Dark/Light Mode">
+                <span class="material-symbols-outlined" style="font-size: 20px;">dark_mode</span>
+            </button>
+        </div>
+
+        <div class="auth-card glass-panel animate-fade-in">
+            <div class="flex-center" style="margin-bottom: 1rem;">
+                <span class="material-symbols-outlined" style="font-size: 48px; color: var(--primary);">task_alt</span>
+            </div>
+            <h1 data-i18n="auth.welcomeBack">Welcome Back</h1>
+            <p data-i18n="auth.loginSubtitle">Login to your Mini Jira account to manage your projects.</p>
+
+            <!-- Alert: Xác thực thành công (chỉ hiện khi click link từ email về) -->
+            <div id="alertVerified" class="alert-banner alert-success">
+                ✅ <div>
+                    <strong>Xác thực email thành công!</strong><br/>
+                    Tài khoản của bạn đã được kích hoạt. Hãy đăng nhập để tiếp tục.
+                </div>
+            </div>
+
+            <!-- Alert: Đặt lại mật khẩu thành công -->
+            <div id="alertResetSuccess" class="alert-banner alert-success" style="display: none;">
+                ✅ <div>
+                    <strong>Đặt lại mật khẩu thành công!</strong><br/>
+                    Vui lòng đăng nhập bằng mật khẩu mới của bạn.
+                </div>
+            </div>
+
+            <!-- Alert: Phiên làm việc hết hạn / đổi mật khẩu từ thiết bị khác -->
+            <div id="alertSessionExpired" class="alert-banner alert-error" style="display: none;">
+                ⚠️ <div>
+                    <strong>Phiên đăng nhập đã kết thúc!</strong><br/>
+                    Mật khẩu đã được thay đổi hoặc tài khoản đã hết hạn phiên. Vui lòng đăng nhập lại.
+                </div>
+            </div>
+
+            <!-- Alert: Đã gửi lại email xác thực (chưa kích hoạt) -->
+            <div id="alertResent" class="alert-banner alert-info" style="display: none;">
+                📩 <div>
+                    <strong>Đã gửi lại email xác thực!</strong><br/>
+                    Vui lòng kiểm tra hộp thư của bạn và bấm vào liên kết để kích hoạt tài khoản.
+                </div>
+            </div>
+
+            <!-- Alert: Token hết hạn / không hợp lệ -->
+            <div id="alertVerifyError" class="alert-banner alert-error">
+                ❌ <div>
+                    <span id="alertVerifyErrorText">Link xác thực không hợp lệ hoặc đã hết hạn.</span><br/>
+                    <button class="resend-link" id="resendBtnExpired" type="button" style="margin-top: 4px; font-weight: 600;">Gửi lại email xác thực</button>
+                </div>
+            </div>
+
+            <!-- Alert: Tài khoản chưa xác thực email -->
+            <div id="alertUnverified" class="alert-banner alert-warning">
+                ⚠️ <div>
+                    Tài khoản chưa được kích hoạt. Vui lòng kiểm tra hộp thư của bạn.<br/>
+                    <button class="resend-link" id="resendBtn" type="button">Gửi lại email xác thực</button>
+                </div>
+            </div>
+
+            <div id="errorMsg" class="error-message">Invalid credentials</div>
+
+            <form id="loginForm">
+                <div class="form-group">
+                    <label class="form-label" data-i18n="auth.email">Email Address</label>
+                    <input type="email" id="email" class="input-field" placeholder="you@example.com" required>
+                </div>
+                
+                <div class="form-group">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem;">
+                        <label class="form-label" data-i18n="auth.password" style="margin-bottom: 0;">Password</label>
+                        <a href="forgot-password.html" style="font-size: 0.8125rem; color: var(--primary); text-decoration: none;" data-i18n="auth.forgotPassword">Quên mật khẩu?</a>
+                    </div>
+                    <div class="password-input-wrapper">
+                        <input type="password" id="password" class="input-field" placeholder="••••••••" required>
+                        <button type="button" class="password-toggle-btn" onclick="togglePasswordVisibility('password', this)" title="Show password" tabindex="-1">
+                            <span class="material-symbols-outlined" style="font-size: 20px;">visibility</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="form-group" id="captchaGroup" style="display: none;">
+                    <label class="form-label" data-i18n="auth.captcha.label">Mã xác thực</label>
+                    <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 8px;">
+                        <img id="captchaImage" src="" alt="Captcha" style="height: 42px; width: 130px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-surface); object-fit: contain; cursor: pointer;" title="Bấm để đổi mã khác" onclick="loadCaptcha()">
+                        <button type="button" class="btn btn-secondary" onclick="loadCaptcha()" style="padding: 0 12px; height: 42px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-surface); color: var(--text-color);" title="Đổi mã khác">
+                            <span id="captchaRefreshIcon" class="material-symbols-outlined" style="font-size: 20px;">refresh</span>
+                        </button>
+                    </div>
+                    <input type="hidden" id="captchaId">
+                    <input type="text" id="captchaCode" class="input-field" placeholder="Nhập ký tự trong ảnh..." maxlength="6" autocomplete="off" style="text-transform: uppercase; letter-spacing: 2px; font-weight: 600;" data-i18n="auth.captcha.placeholder">
+                </div>
+
+                <button type="submit" class="btn btn-primary" style="width: 100%; justify-content: center; padding: 12px;">
+                    <span class="material-symbols-outlined" style="font-size: 20px;">login</span>
+                    <span data-i18n="auth.signIn">Sign In</span>
+                </button>
+            </form>
+
+            <div style="margin-top: 2rem; text-align: center; font-size: 14px; color: var(--text-muted);">
+                <span data-i18n="auth.dontHaveAccount">Don't have an account?</span> <a href="register.html" data-i18n="auth.signUp">Sign up</a>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/app.js?v=5"></script>
+    <script src="js/i18n.js?v=4"></script>
+    <script>
+        if (Auth.isAuthenticated()) {
+            window.location.href = 'projects.html';
+        }
+
+        // ---- Hiển thị alert theo query param ----
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('verified') === 'true') {
+            document.getElementById('alertVerified').style.display = 'flex';
+        }
+        if (urlParams.get('reset') === 'success') {
+            document.getElementById('alertResetSuccess').style.display = 'flex';
+        }
+        if (urlParams.get('sessionExpired') === 'true') {
+            document.getElementById('alertSessionExpired').style.display = 'flex';
+        }
+
+        let lastUnverifiedEmail = urlParams.get('email') || '';
+        if (lastUnverifiedEmail) {
+            const emailInput = document.getElementById('email');
+            if (emailInput && !emailInput.value) emailInput.value = lastUnverifiedEmail;
+        }
+
+        const verifyError = urlParams.get('verifyError');
+        if (verifyError) {
+            const errEl = document.getElementById('alertVerifyError');
+            errEl.style.display = 'flex';
+            const textEl = document.getElementById('alertVerifyErrorText');
+            if (verifyError === 'expired') {
+                textEl.innerHTML = 'Link xác thực đã <strong>hết hạn</strong>.';
+            } else {
+                textEl.innerHTML = 'Link xác thực <strong>không hợp lệ</strong> hoặc đã được sử dụng.';
+            }
+        }
+
+        // ---- Resend email ----
+        document.getElementById('resendBtn').addEventListener('click', () => promptResend());
+        const resendBtnExpired = document.getElementById('resendBtnExpired');
+        if (resendBtnExpired) {
+            resendBtnExpired.addEventListener('click', () => promptResend());
+        }
+
+        async function promptResend() {
+            let emailInput = document.getElementById('email').value.trim()
+                || lastUnverifiedEmail;
+            if (!emailInput) {
+                emailInput = window.prompt('Nhập địa chỉ email tài khoản của bạn để nhận lại link xác thực:');
+                if (emailInput) {
+                    emailInput = emailInput.trim();
+                    document.getElementById('email').value = emailInput;
+                }
+            }
+            if (!emailInput) return;
+            await doResend(emailInput);
+        }
+
+        async function doResend(email) {
+            try {
+                const res = await fetch(`/api/auth/resend-verification?email=${encodeURIComponent(email)}`, {
+                    method: 'POST'
+                });
+                if (!res.ok) {
+                    const data = await res.json().catch(() => ({}));
+                    throw new Error(data.message || 'Không thể gửi lại email xác thực.');
+                }
+                showAlert('alertResent');
+                document.getElementById('alertUnverified').style.display = 'none';
+                const verifyErrEl = document.getElementById('alertVerifyError');
+                if (verifyErrEl) verifyErrEl.style.display = 'none';
+            } catch(e) {
+                showAlert('errorMsg', e.message || 'Không thể gửi lại email. Vui lòng thử lại sau.');
+            }
+        }
+
+        function showAlert(id, msg) {
+            const el = document.getElementById(id);
+            if (!el) return;
+            if (id === 'errorMsg') { 
+                el.textContent = msg; 
+                el.style.display = 'block'; 
+            } else { 
+                el.style.display = 'flex'; 
+            }
+        }
+
+        // ---- Captcha state & loader ----
+        let isCaptchaActive = false;
+
+        function showCaptcha() {
+            isCaptchaActive = true;
+            const group = document.getElementById('captchaGroup');
+            if (group) group.style.display = 'block';
+            const codeInput = document.getElementById('captchaCode');
+            if (codeInput) codeInput.required = true;
+            loadCaptcha();
+        }
+
+        function hideCaptcha() {
+            isCaptchaActive = false;
+            const group = document.getElementById('captchaGroup');
+            if (group) group.style.display = 'none';
+            const codeInput = document.getElementById('captchaCode');
+            if (codeInput) {
+                codeInput.required = false;
+                codeInput.value = '';
+            }
+            const idInput = document.getElementById('captchaId');
+            if (idInput) idInput.value = '';
+        }
+
+        async function checkCaptchaRequirement(email) {
+            try {
+                const param = (email && email.includes('@')) ? `?email=${encodeURIComponent(email)}` : '';
+                const res = await fetchApi(`/auth/captcha-required${param}`);
+                if (res && res.requiresCaptcha) {
+                    showCaptcha();
+                } else {
+                    hideCaptcha();
+                }
+            } catch (err) {
+                // ignore
+            }
+        }
+
+        async function loadCaptcha() {
+            const refreshIcon = document.getElementById('captchaRefreshIcon');
+            if (refreshIcon) refreshIcon.classList.add('animate-spin');
+            try {
+                const res = await fetchApi('/auth/captcha');
+                if (res && res.captchaId) {
+                    document.getElementById('captchaId').value = res.captchaId;
+                    document.getElementById('captchaImage').src = res.captchaImage;
+                    const codeInput = document.getElementById('captchaCode');
+                    if (codeInput) codeInput.value = '';
+                }
+            } catch (err) {
+                console.error("Failed to load captcha:", err);
+            } finally {
+                if (refreshIcon) {
+                    setTimeout(() => refreshIcon.classList.remove('animate-spin'), 350);
+                }
+            }
+        }
+
+        const emailField = document.getElementById('email');
+        if (emailField) {
+            emailField.addEventListener('blur', () => checkCaptchaRequirement(emailField.value.trim()));
+            emailField.addEventListener('change', () => checkCaptchaRequirement(emailField.value.trim()));
+            checkCaptchaRequirement(emailField.value ? emailField.value.trim() : '');
+        } else {
+            checkCaptchaRequirement();
+        }
+
+        // ---- Login form ----
+        const loginForm = document.getElementById('loginForm');
+        const errorMsg = document.getElementById('errorMsg');
+        const submitBtn = loginForm.querySelector('button[type="submit"]');
+
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            errorMsg.style.display = 'none';
+            document.getElementById('alertUnverified').style.display = 'none';
+            const alertResent = document.getElementById('alertResent');
+            if (alertResent) alertResent.style.display = 'none';
+            const isVi = (typeof I18n !== 'undefined' && I18n.currentLang === 'vi') || localStorage.getItem('app_lang') === 'vi';
+            const loadingText = isVi ? 'Đang đăng nhập...' : 'Signing in...';
+            submitBtn.disabled = true;
+            submitBtn.style.opacity = '0.9';
+            submitBtn.style.cursor = 'wait';
+            submitBtn.innerHTML = `<span class="material-symbols-outlined animate-spin" style="font-size: 20px; display: inline-block; animation: spin 0.85s linear infinite; vertical-align: middle; margin-right: 8px;">progress_activity</span><span>${loadingText}</span>`;
+
+            const email = document.getElementById('email').value.trim();
+            const password = document.getElementById('password').value;
+            const captchaId = isCaptchaActive ? document.getElementById('captchaId').value : null;
+            const captchaCode = isCaptchaActive ? document.getElementById('captchaCode').value.trim().toUpperCase() : null;
+
+            try {
+                const response = await fetchApi('/auth/login', {
+                    method: 'POST',
+                    body: JSON.stringify({ email, password, captchaId, captchaCode })
+                });
+
+                if (response && response.accessToken) {
+                    Auth.setToken(response.accessToken);
+                    if (response.refreshToken) Auth.setRefreshToken(response.refreshToken);
+                    try {
+                        const me = await fetchApi('/auth/me');
+                        if (me) Auth.setUser(me);
+                    } catch(e) {}
+                    window.location.href = 'projects.html';
+                } else {
+                    throw new Error('Đăng nhập không thành công.');
+                }
+            } catch (error) {
+                console.error("Login error:", error);
+                if (error.requiresCaptcha === true) {
+                    showCaptcha();
+                } else if (isCaptchaActive) {
+                    loadCaptcha();
+                } else {
+                    hideCaptcha();
+                }
+                const msg = error.message || '';
+                // Tài khoản chưa kích hoạt → hiện alert gửi lại
+                if (msg.includes('kích hoạt') || msg.includes('Disabled') || msg.includes('disabled')) {
+                    lastUnverifiedEmail = email;
+                    document.getElementById('alertUnverified').style.display = 'flex';
+                } else {
+                    if (msg.includes('chưa tồn tại') || msg.includes('chưa được đăng ký')) {
+                        errorMsg.innerHTML = `${msg} <a href="register.html" style="color: inherit; text-decoration: underline; font-weight: 600; margin-left: 4px;">Đăng ký ngay</a>`;
+                    } else {
+                        errorMsg.textContent = msg || 'Login failed. Please check your credentials.';
+                    }
+                    errorMsg.style.display = 'block';
+                }
+            } finally {
+                submitBtn.innerHTML = '<span class="material-symbols-outlined" style="font-size: 20px;">login</span> <span data-i18n="auth.signIn">' + (typeof I18n !== 'undefined' ? I18n.t('auth.signIn') : 'Sign In') + '</span>';
+                submitBtn.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,1956 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>All Issues - Mini Jira</title>
+    <link rel="stylesheet" href="css/style.css"/>
+    <script>
+        (function() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            if (savedTheme === 'dark') {
+                document.documentElement.classList.add('dark');
+                document.documentElement.setAttribute('data-theme', 'dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+                document.documentElement.setAttribute('data-theme', 'light');
+            }
+        })();
+    </script>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "background": "var(--bg-app)",
+                        "surface": "var(--surface-lowest)",
+                        "surface-container-lowest": "var(--surface-lowest)",
+                        "surface-container-low": "var(--surface-low)",
+                        "surface-container": "var(--surface-container)",
+                        "surface-container-high": "var(--surface-high)",
+                        "surface-container-highest": "var(--surface-highest)",
+                        "surface-variant": "var(--surface-variant)",
+                        "text-main": "var(--text-main)",
+                        "text-subtle": "var(--text-subtle)",
+                        "border": "var(--border-color)",
+                        "outline": "var(--outline)",
+                        "outline-variant": "var(--outline-variant)",
+                        "secondary-container": "var(--secondary-container)",
+                        "on-secondary-fixed": "var(--on-secondary-fixed)",
+                        "on-secondary-fixed-variant": "var(--on-secondary-fixed-variant)",
+                        "inverse-surface": "var(--surface-lowest)",
+                        "inverse-on-surface": "var(--text-main)",
+                        "on-background": "var(--text-main)",
+                        "on-surface": "var(--text-main)",
+                        
+                        "primary": "#0052CC",
+                        "primary-container": "#0747A6",
+                        "primary-fixed": "var(--primary-fixed)",
+                        "primary-fixed-dim": "var(--primary-fixed-dim)",
+                        "on-primary": "#ffffff",
+                        "surface-tint": "#0747A6",
+                        
+                        "success": "#36B37E",
+                        "warning": "#FFAB00",
+                        "danger": "#FF5630",
+                        "error": "#FF5630"
+                    },
+                    spacing: { "sidebar-width": "240px", "xs": "4px", "sm": "8px", "md": "16px", "lg": "24px", "xl": "48px" },
+                    fontFamily: {
+                        "headline-sm": ["Inter"], "label-sm": ["Inter"], "label-bold": ["Inter"], "display-lg": ["Inter"],
+                        "code": ["Inter"], "body-md": ["Inter"], "headline-md": ["Inter"], "body-lg": ["Inter"]
+                    },
+                    fontSize: {
+                        "headline-sm": ["20px", { "lineHeight": "28px", "fontWeight": "600" }],
+                        "label-sm": ["12px", { "lineHeight": "16px", "fontWeight": "400" }],
+                        "label-bold": ["12px", { "lineHeight": "16px", "fontWeight": "600" }],
+                        "display-lg": ["30px", { "lineHeight": "36px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "code": ["13px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }]
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { background-color: var(--bg-app); color: var(--text-main); }
+        .card-shadow { box-shadow: var(--shadow-sm); transition: box-shadow 0.2s ease-in-out; }
+        .card-shadow:hover { box-shadow: var(--shadow-md); }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 20; }
+    </style>
+</head>
+<body class="font-body-md text-body-md antialiased overflow-x-hidden min-h-screen bg-background text-text-main">
+
+    <!-- Modular Sidebar -->
+    <div id="appSidebar"></div>
+
+    <!-- Main Content -->
+    <main class="ml-sidebar-width p-xl min-h-screen">
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4 mb-8">
+            <div>
+                <h2 class="font-display-lg text-display-lg text-text-main" data-i18n="issues.title">Issues Explorer</h2>
+                <p class="font-body-md text-body-md text-text-subtle mt-1" data-i18n="issues.subtitle">Search, filter, and track all tasks across your projects.</p>
+            </div>
+            <div class="flex items-center gap-2.5 flex-wrap">
+                <!-- Export Dropdown -->
+                <div class="relative inline-block text-left" id="exportDropdownContainer">
+                    <button type="button" onclick="toggleExportDropdown(event)" class="h-10 px-3.5 border border-border hover:border-primary rounded-lg text-sm font-semibold text-text-main bg-surface-container-lowest flex items-center gap-2 transition-all shadow-sm active:scale-95 cursor-pointer">
+                        <span class="material-symbols-outlined text-[18px] text-primary">file_download</span>
+                        <span data-i18n="issues.export.btn">Export Excel</span>
+                        <span class="material-symbols-outlined text-[16px] text-text-subtle">expand_more</span>
+                    </button>
+                    <!-- Dropdown Menu -->
+                    <div id="exportDropdownMenu" class="hidden absolute right-0 mt-2 w-72 rounded-xl bg-surface-container-lowest border border-border shadow-xl z-50 p-1.5 animate-fade-in">
+                        <button type="button" onclick="exportIssuesExcel('current')" class="w-full text-left px-3 py-2.5 rounded-lg hover:bg-surface-container-low transition-colors flex items-start gap-2.5 cursor-pointer">
+                            <span class="material-symbols-outlined text-primary text-[20px] shrink-0 mt-0.5">view_column</span>
+                            <div>
+                                <div class="text-xs font-semibold text-text-main" data-i18n="issues.export.currentFields">Current fields</div>
+                                <div class="text-[11px] text-text-subtle mt-0.5" data-i18n="issues.export.currentFieldsDesc">Only visible columns in the table</div>
+                            </div>
+                        </button>
+                        <button type="button" onclick="exportIssuesExcel('all')" class="w-full text-left px-3 py-2.5 rounded-lg hover:bg-surface-container-low transition-colors flex items-start gap-2.5 cursor-pointer">
+                            <span class="material-symbols-outlined text-primary text-[20px] shrink-0 mt-0.5">table_rows</span>
+                            <div>
+                                <div class="text-xs font-semibold text-text-main" data-i18n="issues.export.allFields">All fields</div>
+                                <div class="text-[11px] text-text-subtle mt-0.5" data-i18n="issues.export.allFieldsDesc">Export all 18 detailed issue fields</div>
+                            </div>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Manage Labels Button (Admin only) -->
+                <button id="btnOpenManageLabels" onclick="openManageLabelsModal()" class="hidden h-10 px-3.5 border border-border hover:border-primary rounded-lg text-sm font-semibold text-text-main bg-surface-container-lowest flex items-center gap-2 transition-all shadow-sm active:scale-95 cursor-pointer">
+                    <span class="material-symbols-outlined text-[18px] text-primary">label</span>
+                    <span data-i18n="labels.manage">Manage Labels</span>
+                </button>
+
+                <!-- Import Button (For PM or Admin) -->
+                <button id="btnOpenImportIssues" onclick="openImportModal()" class="hidden h-10 px-3.5 border border-border hover:border-primary rounded-lg text-sm font-semibold text-text-main bg-surface-container-lowest flex items-center gap-2 transition-all shadow-sm active:scale-95 cursor-pointer">
+                    <span class="material-symbols-outlined text-[18px] text-primary">upload_file</span>
+                    <span data-i18n="issues.import.btn">Import Excel</span>
+                </button>
+
+                <!-- Create Issue Button -->
+                <button id="btnOpenCreateIssue" onclick="openCreateIssueModal()" class="hidden h-10 bg-primary hover:bg-surface-tint text-white font-semibold text-sm px-4 rounded-lg flex items-center gap-2 transition-all shadow-sm hover:shadow active:scale-95 cursor-pointer">
+                    <span class="material-symbols-outlined text-[18px]">add_task</span>
+                    <span data-i18n="issues.createBtn">Create Issue</span>
+                </button>
+            </div>
+        </div>
+
+        <div id="issuesAlert" class="hidden mb-6 p-3.5 rounded-lg text-xs font-semibold"></div>
+
+        <!-- Filter Bar -->
+        <div class="bg-surface-container-lowest border border-border rounded-xl p-4 card-shadow mb-6 flex flex-wrap gap-4 items-center justify-between">
+            <div class="flex flex-wrap gap-3 items-center">
+                <!-- Search Filter -->
+                <div class="relative w-64">
+                    <span class="material-symbols-outlined text-text-subtle text-[18px] absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none">search</span>
+                    <input class="w-full border border-border rounded-lg pl-8 pr-3 py-1.5 bg-surface-container-low text-text-main text-xs font-medium focus:outline-none focus:border-primary" id="globalSearchInput" data-i18n="issues.searchPlaceholder" placeholder="Filter issues by key or title..." type="text"/>
+                </div>
+
+                <div class="w-px h-6 bg-border hidden sm:block"></div>
+
+                <!-- Project Dropdown -->
+                <div class="flex items-center gap-2">
+                    <span class="text-xs font-label-bold text-text-subtle uppercase" data-i18n="issues.filter.project">Project:</span>
+                    <select id="projectFilter" onchange="onProjectChange()" class="border border-border rounded-lg px-3 py-1.5 bg-surface-container-low text-text-main text-xs font-medium focus:outline-none focus:border-primary">
+                        <option value="" data-i18n="issues.filter.loadingProjects">Loading projects...</option>
+                    </select>
+                </div>
+
+                <div class="w-px h-6 bg-border hidden sm:block"></div>
+
+                <!-- Quick Filters: My Issues & Overdue -->
+                <div class="flex items-center gap-1.5">
+                    <button type="button" id="btnFilterMyIssues" onclick="toggleMyIssuesFilter()" class="h-8 px-2.5 rounded-lg border border-border text-xs font-medium text-text-main bg-surface-container-low hover:border-primary flex items-center gap-1.5 transition-all cursor-pointer shadow-sm">
+                        <span class="material-symbols-outlined text-[16px] text-text-subtle" id="iconFilterMyIssues">person</span>
+                        <span data-i18n="issues.filter.myIssues">Việc của tôi</span>
+                    </button>
+                    <button type="button" id="btnFilterOverdue" onclick="toggleOverdueFilter()" class="h-8 px-2.5 rounded-lg border border-border text-xs font-medium text-text-main bg-surface-container-low hover:border-danger flex items-center gap-1.5 transition-all cursor-pointer shadow-sm">
+                        <span class="material-symbols-outlined text-[16px] text-text-subtle" id="iconFilterOverdue">alarm</span>
+                        <span data-i18n="issues.filter.overdue">Quá hạn</span>
+                    </button>
+                </div>
+
+                <div class="w-px h-6 bg-border hidden sm:block"></div>
+
+                <!-- Status Filter -->
+                <div class="flex items-center gap-2">
+                    <span class="text-xs font-label-bold text-text-subtle uppercase" data-i18n="issues.filter.status">Status:</span>
+                    <select id="statusFilter" onchange="applyFilters()" class="border border-border rounded-lg px-3 py-1.5 bg-surface-container-low text-text-main text-xs font-medium focus:outline-none focus:border-primary">
+                        <option value="" data-i18n="issues.filter.allStatuses">All Statuses</option>
+                        <option value="TODO" data-i18n="status.todo">To Do</option>
+                        <option value="IN_PROGRESS" data-i18n="status.inProgress">In Progress</option>
+                        <option value="REVIEW" data-i18n="status.inReview">In Review</option>
+                        <option value="DONE" data-i18n="status.done">Done</option>
+                    </select>
+                </div>
+
+                <!-- Priority Filter -->
+                <div class="flex items-center gap-2">
+                    <span class="text-xs font-label-bold text-text-subtle uppercase" data-i18n="issues.filter.priority">Priority:</span>
+                    <select id="priorityFilter" onchange="applyFilters()" class="border border-border rounded-lg px-3 py-1.5 bg-surface-container-low text-text-main text-xs font-medium focus:outline-none focus:border-primary">
+                        <option value="" data-i18n="issues.filter.allPriorities">All Priorities</option>
+                        <option value="HIGH" data-i18n="priority.high">High</option>
+                        <option value="MEDIUM" data-i18n="priority.medium">Medium</option>
+                        <option value="LOW" data-i18n="priority.low">Low</option>
+                    </select>
+                </div>
+
+                <div class="w-px h-6 bg-border hidden sm:block"></div>
+
+                <!-- Label Filter -->
+                <div class="flex items-center gap-2">
+                    <span class="text-xs font-label-bold text-text-subtle uppercase" data-i18n="issues.filter.label">Label:</span>
+                    <select id="labelFilter" onchange="applyFilters()" class="border border-border rounded-lg px-3 py-1.5 bg-surface-container-low text-text-main text-xs font-medium focus:outline-none focus:border-primary">
+                        <option value="" data-i18n="labels.all">All Labels</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="text-xs text-text-subtle" id="issueCountBadge">
+                Showing 0 issue(s)
+            </div>
+        </div>
+
+        <!-- Issues Table Container -->
+        <div class="bg-surface-container-lowest border border-border rounded-xl card-shadow overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse text-sm">
+                    <thead>
+                        <tr class="border-b border-border bg-surface-container-low/50 text-text-subtle text-xs font-semibold uppercase tracking-wider">
+                            <th class="py-3.5 px-4" data-i18n="issues.table.key">Key</th>
+                            <th class="py-3.5 px-4" data-i18n="issues.table.title">Title</th>
+                            <th class="py-3.5 px-4" data-i18n="issues.table.labels">Labels</th>
+                            <th class="py-3.5 px-4" data-i18n="issues.table.status">Status</th>
+                            <th class="py-3.5 px-4" data-i18n="issues.table.priority">Priority</th>
+                            <th class="py-3.5 px-4" data-i18n="issues.table.assignee">Assignee</th>
+                            <th class="py-3.5 px-4" data-i18n="issues.table.dueDate">Due Date</th>
+                            <th class="py-3.5 px-4 text-right" data-i18n="issues.table.actions">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="issuesTableBody" class="divide-y divide-border text-text-main">
+                        <tr>
+                            <td colspan="8" class="py-12 text-center text-text-subtle">
+                                <span class="material-symbols-outlined text-4xl mb-2 text-text-subtle/50 animate-spin">sync</span>
+                                <p data-i18n="issues.table.loading">Loading issues...</p>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Pagination Footer -->
+            <div id="issuesPagination" class="px-6 py-4 border-t border-border bg-surface-container-lowest flex flex-col sm:flex-row items-center justify-between gap-4">
+                <!-- Left: Info & Page Size Select -->
+                <div class="flex items-center gap-3 text-xs text-text-subtle font-medium">
+                    <span id="issuePaginationInfo">Hiển thị 0 trong tổng 0 bản ghi</span>
+                    <div class="relative inline-block">
+                        <select id="issuePageSizeSelect" onchange="onIssuePageSizeChange(this.value)" class="bg-surface-container-low text-text-main text-xs font-medium border border-border rounded-lg px-2.5 py-1.5 pr-7 focus:outline-none focus:border-primary cursor-pointer appearance-none shadow-sm">
+                            <option value="5">5 / trang</option>
+                            <option value="10" selected>10 / trang</option>
+                            <option value="20">20 / trang</option>
+                            <option value="50">50 / trang</option>
+                            <option value="100">100 / trang</option>
+                        </select>
+                        <span class="material-symbols-outlined absolute right-1.5 top-1/2 -translate-y-1/2 pointer-events-none text-text-subtle text-[16px]">expand_more</span>
+                    </div>
+                </div>
+
+                <!-- Right: Pagination Buttons -->
+                <div class="flex items-center gap-1.5" id="issuePaginationControls"></div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Create Issue Modal -->
+    <div id="createIssueModal" class="fixed inset-0 bg-black/60 hidden flex items-center justify-center z-50 p-4">
+        <div class="bg-surface-container-lowest rounded-xl shadow-2xl w-full max-w-lg p-6 border border-border animate-fade-in relative">
+            <div class="flex justify-between items-center mb-5 pb-3 border-b border-border">
+                <h3 class="font-headline-sm text-lg text-text-main flex items-center gap-2">
+                    <span class="material-symbols-outlined text-primary">add_task</span>
+                    <span data-i18n="issues.modal.title">Create Issue</span>
+                </h3>
+                <button onclick="closeCreateIssueModal()" class="text-text-subtle hover:text-text-main cursor-pointer">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
+
+            <div id="createIssueError" class="hidden mb-4 p-3 bg-danger/10 text-danger border border-danger/20 rounded-lg text-sm"></div>
+
+            <form id="createIssueForm" class="space-y-4">
+                <div>
+                    <label class="block font-label-bold text-text-subtle text-xs mb-1"><span data-i18n="issues.modal.project">Project</span> <span class="text-danger">*</span></label>
+                    <select id="modalProjectId" required class="w-full border border-border rounded-lg px-3 py-2 bg-surface-container-low text-text-main text-sm focus:outline-none focus:border-primary">
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block font-label-bold text-text-subtle text-xs mb-1"><span data-i18n="issues.modal.summary">Title / Summary</span> <span class="text-danger">*</span></label>
+                    <input type="text" id="modalIssueTitle" required maxlength="200" data-i18n="issues.modal.summaryPlaceholder" placeholder="e.g. Fix authentication token expiration" class="w-full border border-border rounded-lg px-3 py-2 bg-surface-container-low text-text-main text-sm focus:outline-none focus:border-primary"/>
+                </div>
+
+                <div>
+                    <label class="block font-label-bold text-text-subtle text-xs mb-1" data-i18n="issues.modal.desc">Description</label>
+                    <textarea id="modalIssueDesc" rows="3" data-i18n="issues.modal.descPlaceholder" placeholder="Add detailed requirements or steps to reproduce..." class="w-full border border-border rounded-lg px-3 py-2 bg-surface-container-low text-text-main text-sm focus:outline-none focus:border-primary"></textarea>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block font-label-bold text-text-subtle text-xs mb-1" data-i18n="issues.modal.priority">Priority</label>
+                        <select id="modalIssuePriority" class="w-full border border-border rounded-lg px-3 py-2 bg-surface-container-low text-text-main text-sm focus:outline-none focus:border-primary">
+                            <option value="MEDIUM" data-i18n="priority.medium" selected>Medium</option>
+                            <option value="HIGH" data-i18n="priority.high">High</option>
+                            <option value="LOW" data-i18n="priority.low">Low</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block font-label-bold text-text-subtle text-xs mb-1" data-i18n="issues.modal.dueDate">Due Date</label>
+                        <input type="date" id="modalIssueDueDate" class="w-full border border-border rounded-lg px-3 py-2 bg-surface-container-low text-text-main text-sm focus:outline-none focus:border-primary"/>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block font-label-bold text-text-subtle text-xs mb-1" data-i18n="issues.modal.assignee">Assignee / Người Phụ Trách</label>
+                    <select id="modalIssueAssignee" class="w-full border border-border rounded-lg px-3 py-2 bg-surface-container-low text-text-main text-sm focus:outline-none focus:border-primary">
+                        <option value="">Unassigned (Chưa gán)</option>
+                    </select>
+                </div>
+
+                <div>
+                    <div class="flex items-center justify-between mb-1">
+                        <label class="block font-label-bold text-text-subtle text-xs" data-i18n="labels.title">Nhãn / Labels</label>
+                        <span class="text-[11px] text-text-subtle font-normal" data-i18n="labels.select">Chọn nhãn cho công việc</span>
+                    </div>
+                    <div id="modalCreateIssueLabelsContainer" class="flex flex-wrap gap-1.5 p-2 bg-surface-container-low border border-border rounded-lg min-h-[40px] max-h-32 overflow-y-auto items-center">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block font-label-bold text-text-subtle text-xs mb-1">
+                        <span>Ảnh đính kèm / Attachments</span>
+                        <span class="text-text-subtle font-normal text-[11px]">(Tối đa 10 ảnh)</span>
+                    </label>
+                    <div class="flex items-center gap-2 mb-2">
+                        <input type="file" id="modalCreateIssueFiles" multiple accept="image/jpeg,image/png,image/webp,image/gif" class="hidden" onchange="onModalCreateFilesSelected(this)">
+                        <button type="button" onclick="document.getElementById('modalCreateIssueFiles').click()" class="text-xs px-3 py-1.5 bg-surface-container-low hover:bg-surface-container-high border border-border text-text-main rounded-lg font-medium transition-all cursor-pointer inline-flex items-center gap-1.5 shadow-xs active:scale-95">
+                            <span class="material-symbols-outlined text-[16px] text-primary">add_photo_alternate</span>
+                            <span>Chọn ảnh</span>
+                        </button>
+                        <span id="modalCreateFilesCountText" class="text-xs text-text-subtle">Chưa chọn ảnh nào</span>
+                    </div>
+                    <div id="modalCreateFilesPreview" class="flex flex-wrap gap-2"></div>
+                </div>
+
+                <div class="flex justify-end gap-3 pt-3 border-t border-border">
+                    <button type="button" onclick="closeCreateIssueModal()" class="px-4 py-2 text-text-subtle hover:bg-surface-container-low rounded-lg text-sm font-medium cursor-pointer" data-i18n="issues.modal.cancel">Cancel</button>
+                    <button type="submit" id="btnSubmitCreateIssue" class="px-5 py-2 bg-primary hover:bg-surface-tint text-white rounded-lg text-sm font-semibold shadow-sm flex items-center gap-1.5 cursor-pointer">
+                        <span class="material-symbols-outlined text-[16px]">check</span>
+                        <span data-i18n="issues.modal.create">Create Issue</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Edit Issue Modal -->
+    <div id="editIssueModal" class="fixed inset-0 bg-black/60 hidden flex items-center justify-center z-50 p-4">
+        <div class="bg-surface-container-lowest rounded-xl shadow-2xl w-full max-w-lg p-6 border border-border animate-fade-in relative">
+            <div class="flex justify-between items-center mb-5 pb-3 border-b border-border">
+                <h3 class="font-headline-sm text-lg text-text-main flex items-center gap-2">
+                    <span class="material-symbols-outlined text-primary">edit_note</span>
+                    <span>Chỉnh sửa công việc</span>
+                    <span id="editIssueKeyBadge" class="text-xs font-mono font-bold px-2 py-0.5 rounded bg-primary/10 text-primary"></span>
+                </h3>
+                <button onclick="closeEditIssueModal()" class="text-text-subtle hover:text-text-main cursor-pointer">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
+
+            <div id="editIssueError" class="hidden mb-4 p-3 bg-danger/10 text-danger border border-danger/20 rounded-lg text-sm"></div>
+
+            <form id="editIssueForm" class="space-y-4">
+                <input type="hidden" id="editIssueId" />
+                <input type="hidden" id="editIssueVersion" />
+
+                <div>
+                    <label class="block font-label-bold text-text-subtle text-xs mb-1">Tiêu đề / Title <span class="text-danger">*</span></label>
+                    <input type="text" id="editIssueTitle" required maxlength="200" class="w-full border border-border rounded-lg px-3 py-2 bg-surface-container-low text-text-main text-sm focus:outline-none focus:border-primary"/>
+                </div>
+
+                <div>
+                    <label class="block font-label-bold text-text-subtle text-xs mb-1">Mô tả / Description</label>
+                    <textarea id="editIssueDesc" rows="3" class="w-full border border-border rounded-lg px-3 py-2 bg-surface-container-low text-text-main text-sm focus:outline-none focus:border-primary"></textarea>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block font-label-bold text-text-subtle text-xs mb-1">Mức ưu tiên / Priority</label>
+                        <select id="editIssuePriority" class="w-full border border-border rounded-lg px-3 py-2 bg-surface-container-low text-text-main text-sm focus:outline-none focus:border-primary">
+                            <option value="LOW">Low</option>
+                            <option value="MEDIUM">Medium</option>
+                            <option value="HIGH">High</option>
+                        </select>
+                        <p id="editIssuePriorityNotice" class="text-[11px] text-text-subtle mt-1 hidden" data-i18n="issues.modal.noticePriority">Chỉ Project Manager hoặc Admin mới có quyền đổi độ ưu tiên.</p>
+                    </div>
+
+                    <div>
+                        <label class="block font-label-bold text-text-subtle text-xs mb-1">Hạn chót / Due Date</label>
+                        <input type="date" id="editIssueDueDate" class="w-full border border-border rounded-lg px-3 py-2 bg-surface-container-low text-text-main text-sm focus:outline-none focus:border-primary"/>
+                        <p id="editIssueDueDateNotice" class="text-[11px] text-text-subtle mt-1 hidden" data-i18n="issues.modal.noticeDueDate">Chỉ Project Manager hoặc Admin mới có quyền đổi hạn chót.</p>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block font-label-bold text-text-subtle text-xs mb-1" data-i18n="labels.title">Nhãn / Labels</label>
+                    <div id="modalEditIssueLabelsContainer" class="flex flex-wrap gap-1.5 p-2 bg-surface-container-low border border-border rounded-lg min-h-[40px] max-h-32 overflow-y-auto items-center">
+                    </div>
+                </div>
+
+                <div id="editIssueAssigneeContainer">
+                    <label class="block font-label-bold text-text-subtle text-xs mb-1">Người phụ trách / Assignee</label>
+                    <select id="editIssueAssignee" class="w-full border border-border rounded-lg px-3 py-2 bg-surface-container-low text-text-main text-sm focus:outline-none focus:border-primary">
+                        <option value="">Unassigned (Chưa gán)</option>
+                    </select>
+                </div>
+
+                <div class="flex justify-end gap-3 pt-3 border-t border-border">
+                    <button type="button" onclick="closeEditIssueModal()" class="px-4 py-2 text-text-subtle hover:bg-surface-container-low rounded-lg text-sm font-medium cursor-pointer">Hủy / Cancel</button>
+                    <button type="submit" id="btnSubmitEditIssue" class="px-5 py-2 bg-primary hover:bg-surface-tint text-white rounded-lg text-sm font-semibold shadow-sm flex items-center gap-1.5 cursor-pointer">
+                        <span class="material-symbols-outlined text-[16px]">save</span>
+                        <span>Lưu thay đổi</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Manage Labels Modal -->
+    <div id="manageLabelsModal" class="fixed inset-0 bg-black/60 hidden flex items-center justify-center z-50 p-4">
+        <div class="bg-surface-container-lowest rounded-xl shadow-2xl w-full max-w-lg p-6 border border-border animate-fade-in relative flex flex-col max-h-[85vh]">
+            <div class="flex justify-between items-center mb-4 pb-3 border-b border-border shrink-0">
+                <h3 class="font-headline-sm text-lg text-text-main flex items-center gap-2">
+                    <span class="material-symbols-outlined text-primary">label</span>
+                    <span data-i18n="labels.manage">Quản lý nhãn</span>
+                </h3>
+                <button onclick="closeManageLabelsModal()" class="text-text-subtle hover:text-text-main cursor-pointer">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
+
+            <div id="manageLabelsAlert" class="hidden mb-4 p-3 rounded-lg text-xs font-semibold shrink-0"></div>
+
+            <!-- Create New Label Input -->
+            <div class="flex gap-2 mb-4 shrink-0">
+                <input type="text" id="newLabelInput" maxlength="50" class="flex-1 border border-border rounded-lg px-3 py-2 bg-surface-container-low text-text-main text-sm focus:outline-none focus:border-primary" data-i18n="labels.placeholder" placeholder="Nhập tên nhãn mới..." />
+                <button type="button" onclick="submitCreateLabel()" id="btnSubmitCreateLabel" class="px-4 py-2 bg-primary hover:bg-surface-tint text-white font-semibold text-xs rounded-lg flex items-center gap-1.5 transition-all shadow-sm cursor-pointer whitespace-nowrap">
+                    <span class="material-symbols-outlined text-[16px]">add</span>
+                    <span data-i18n="labels.create">Tạo nhãn</span>
+                </button>
+            </div>
+
+            <!-- Label List -->
+            <div class="text-xs font-semibold text-text-subtle uppercase tracking-wider mb-2 shrink-0 flex justify-between items-center">
+                <span data-i18n="labels.title">Danh sách nhãn</span>
+                <span id="manageLabelsCount" class="text-text-subtle font-mono text-xs font-bold bg-surface-container-high px-2 py-0.5 rounded-full">0</span>
+            </div>
+            <div id="manageLabelsList" class="flex-1 overflow-y-auto divide-y divide-border border border-border rounded-lg bg-surface-container-low/40 p-2 space-y-1.5 min-h-[160px]">
+                <!-- Rendered dynamically -->
+            </div>
+
+            <div class="flex justify-end pt-4 border-t border-border mt-4 shrink-0">
+                <button type="button" onclick="closeManageLabelsModal()" class="px-4 py-2 bg-surface-container hover:bg-surface-container-high text-text-main rounded-lg text-xs font-semibold cursor-pointer" data-i18n="projects.modal.cancel">Đóng</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Import Issues Modal -->
+    <div id="importIssuesModal" class="fixed inset-0 bg-black/60 hidden flex items-center justify-center z-50 p-4">
+        <div class="bg-surface-container-lowest rounded-xl shadow-2xl w-full max-w-lg p-6 border border-border animate-fade-in relative max-h-[90vh] flex flex-col">
+            <!-- Modal Header -->
+            <div class="flex justify-between items-center mb-4 pb-3 border-b border-border shrink-0">
+                <h3 class="font-headline-sm text-lg text-text-main flex items-center gap-2">
+                    <span class="material-symbols-outlined text-primary">upload_file</span>
+                    <span data-i18n="issues.import.modalTitle">Nhập Công Việc Từ Excel</span>
+                </h3>
+                <button onclick="closeImportModal()" class="text-text-subtle hover:text-text-main cursor-pointer">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
+
+            <!-- Modal Content (Scrollable) -->
+            <div class="space-y-4 overflow-y-auto pr-1 flex-1">
+                <!-- Template Download Card -->
+                <div class="bg-surface-container-low border border-border rounded-xl p-3.5 flex items-center justify-between gap-3">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                            <span class="material-symbols-outlined text-[22px]">description</span>
+                        </div>
+                        <div>
+                            <div class="text-xs font-semibold text-text-main">File Mẫu Excel (.xlsx)</div>
+                            <div class="text-[11px] text-text-subtle mt-0.5">Bao gồm hướng dẫn, định dạng và menu chọn hợp lệ</div>
+                        </div>
+                    </div>
+                    <button type="button" onclick="downloadIssueTemplate()" class="px-3 py-1.5 bg-surface-container-lowest hover:bg-surface-container-high border border-border hover:border-primary text-text-main text-xs font-semibold rounded-lg transition-colors flex items-center gap-1.5 shrink-0 shadow-xs cursor-pointer">
+                        <span class="material-symbols-outlined text-[16px] text-primary">download</span>
+                        <span data-i18n="issues.import.downloadTemplate">Tải file mẫu</span>
+                    </button>
+                </div>
+
+                <!-- Dropzone Area -->
+                <div id="importDropzoneBox" 
+                     ondragover="event.preventDefault(); this.classList.add('border-primary', 'bg-primary/5')" 
+                     ondragleave="this.classList.remove('border-primary', 'bg-primary/5')" 
+                     ondrop="event.preventDefault(); this.classList.remove('border-primary', 'bg-primary/5'); if (event.dataTransfer.files.length) handleImportFile(event.dataTransfer.files[0])"
+                     onclick="document.getElementById('importFileInput').click()"
+                     class="border-2 border-dashed border-border rounded-xl p-6 text-center cursor-pointer hover:border-primary hover:bg-surface-container-low transition-all">
+                    <span class="material-symbols-outlined text-4xl text-primary mb-2">cloud_upload</span>
+                    <p class="text-sm font-semibold text-text-main" data-i18n="issues.import.dropzoneText">Kéo thả file .xlsx vào đây hoặc bấm để chọn</p>
+                    <p class="text-xs text-text-subtle mt-1" data-i18n="issues.import.dropzoneHint">Hỗ trợ file .xlsx tối đa 500 dòng</p>
+                    <input type="file" id="importFileInput" accept=".xlsx, .xls" class="hidden" onchange="onImportFileSelected(this)">
+                </div>
+
+                <!-- Selected File Display Box -->
+                <div id="importFileSelectedBox" class="hidden border border-border bg-surface-container-low rounded-xl p-3.5 flex items-center justify-between">
+                    <div class="flex items-center gap-3 truncate">
+                        <span class="material-symbols-outlined text-success text-[26px]">task</span>
+                        <div class="truncate">
+                            <div class="text-xs font-semibold text-text-main truncate" id="importFileName">filename.xlsx</div>
+                            <div class="text-[11px] text-text-subtle" id="importFileSize">0 KB</div>
+                        </div>
+                    </div>
+                    <button type="button" onclick="removeSelectedImportFile()" class="p-1 text-text-subtle hover:text-danger rounded hover:bg-danger/10 cursor-pointer" title="Xóa file">
+                        <span class="material-symbols-outlined text-[18px]">close</span>
+                    </button>
+                </div>
+
+                <!-- Import Results Display -->
+                <div id="importResultBox" class="hidden"></div>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="flex justify-end gap-3 pt-4 border-t border-border mt-3 shrink-0">
+                <button type="button" onclick="closeImportModal()" class="px-4 py-2 text-text-subtle hover:bg-surface-container-low rounded-lg text-sm font-medium cursor-pointer" data-i18n="issues.modal.cancel">Hủy</button>
+                <button type="button" id="btnSubmitImport" onclick="submitImportIssues()" disabled class="opacity-50 cursor-not-allowed px-5 py-2 bg-primary hover:bg-surface-tint text-white rounded-lg text-sm font-semibold shadow-sm flex items-center gap-1.5 transition-all">
+                    <span class="material-symbols-outlined text-[16px]">upload</span>
+                    <span data-i18n="issues.import.uploadBtn">Bắt Đầu Nhập</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/i18n.js?v=4"></script>
+    <script src="js/app.js?v=7"></script>
+    <script src="js/sidebar.js?v=5"></script>
+    <script>
+        if (!Auth.isAuthenticated()) {
+            window.location.href = 'login.html';
+        }
+
+        let projects = [];
+        let allIssues = [];
+        let currentProjectId = null;
+        let allLabels = [];
+        let selectedCreateLabelIds = new Set();
+        let selectedEditLabelIds = new Set();
+        let filterMyIssuesActive = false;
+        let filterOverdueActive = false;
+
+        async function loadAllLabels() {
+            try {
+                allLabels = await fetchApi('/labels') || [];
+                renderLabelFilterDropdown();
+            } catch(e) {
+                console.error("Failed to load labels:", e);
+            }
+        }
+
+        function renderLabelFilterDropdown() {
+            const filter = document.getElementById('labelFilter');
+            if (!filter) return;
+            const cur = filter.value;
+            const allText = (typeof I18n !== 'undefined' && I18n.t) ? I18n.t('labels.all') : 'All Labels';
+            filter.innerHTML = `<option value="">${allText}</option>` +
+                allLabels.map(l => `<option value="${l.id}">${l.name}</option>`).join('');
+            if (cur) filter.value = cur;
+        }
+
+        function renderCreateIssueLabels() {
+            const container = document.getElementById('modalCreateIssueLabelsContainer');
+            if (!container) return;
+            if (!allLabels || allLabels.length === 0) {
+                container.innerHTML = '<span class="text-xs text-text-subtle italic">' + (I18n.t('labels.emptyList') || 'Chưa có nhãn nào') + '</span>';
+                return;
+            }
+            container.innerHTML = allLabels.map(l => {
+                const isSelected = selectedCreateLabelIds.has(l.id);
+                const style = LabelUtils.getColorStyle(l.name);
+                const light = style.light || style;
+                const dark = style.dark || style;
+                return `
+                    <button type="button" onclick="toggleCreateIssueLabel(${l.id})" class="label-chip px-2.5 py-1 rounded-md text-xs font-medium border transition-all cursor-pointer select-none flex items-center gap-1 ${
+                        isSelected 
+                            ? 'bg-primary text-white border-primary shadow-xs' 
+                            : 'hover:opacity-85'
+                    }" style="${!isSelected ? `--lbl-bg: ${light.bg}; --lbl-text: ${light.text}; --lbl-border: ${light.border}; --lbl-dark-bg: ${dark.bg}; --lbl-dark-text: ${dark.text}; --lbl-dark-border: ${dark.border}; background-color: ${style.bg}; color: ${style.text}; border-color: ${style.border};` : ''}">
+                        <span class="material-symbols-outlined text-[13px]">${isSelected ? 'check' : 'label'}</span>
+                        <span>${l.name}</span>
+                    </button>
+                `;
+            }).join('');
+        }
+
+        function toggleCreateIssueLabel(labelId) {
+            if (selectedCreateLabelIds.has(labelId)) {
+                selectedCreateLabelIds.delete(labelId);
+            } else {
+                selectedCreateLabelIds.add(labelId);
+            }
+            renderCreateIssueLabels();
+        }
+
+        function renderEditIssueLabels() {
+            const container = document.getElementById('modalEditIssueLabelsContainer');
+            if (!container) return;
+            if (!allLabels || allLabels.length === 0) {
+                container.innerHTML = '<span class="text-xs text-text-subtle italic">' + (I18n.t('labels.emptyList') || 'Chưa có nhãn nào') + '</span>';
+                return;
+            }
+            container.innerHTML = allLabels.map(l => {
+                const isSelected = selectedEditLabelIds.has(l.id);
+                const style = LabelUtils.getColorStyle(l.name);
+                const light = style.light || style;
+                const dark = style.dark || style;
+                return `
+                    <button type="button" onclick="toggleEditIssueLabel(${l.id})" class="label-chip px-2.5 py-1 rounded-md text-xs font-medium border transition-all cursor-pointer select-none flex items-center gap-1 ${
+                        isSelected 
+                            ? 'bg-primary text-white border-primary shadow-xs' 
+                            : 'hover:opacity-85'
+                    }" style="${!isSelected ? `--lbl-bg: ${light.bg}; --lbl-text: ${light.text}; --lbl-border: ${light.border}; --lbl-dark-bg: ${dark.bg}; --lbl-dark-text: ${dark.text}; --lbl-dark-border: ${dark.border}; background-color: ${style.bg}; color: ${style.text}; border-color: ${style.border};` : ''}">
+                        <span class="material-symbols-outlined text-[13px]">${isSelected ? 'check' : 'label'}</span>
+                        <span>${l.name}</span>
+                    </button>
+                `;
+            }).join('');
+        }
+
+        function toggleEditIssueLabel(labelId) {
+            if (selectedEditLabelIds.has(labelId)) {
+                selectedEditLabelIds.delete(labelId);
+            } else {
+                selectedEditLabelIds.add(labelId);
+            }
+            renderEditIssueLabels();
+        }
+
+        // Callback khi đổi ngôn ngữ
+        function onLanguageChanged() {
+            renderLabelFilterDropdown();
+            if (allIssues.length > 0) {
+                renderIssues(allIssues);
+            }
+        }
+
+        // Load Header User Profile
+        async function loadUserProfile() {
+            try {
+                const user = await fetchApi('/auth/me');
+                if (user) {
+                    Auth.setUser(user);
+                    if (typeof applyUserRoleUI === 'function') {
+                        applyUserRoleUI(user);
+                    }
+                    updateCreateIssueButtonVisibility();
+                }
+            } catch (err) {
+                console.error("Failed to load user info:", err);
+            }
+        }
+
+        // Load Projects Dropdown
+        async function loadProjects() {
+            try {
+                projects = await fetchApi('/projects');
+                const projectFilter = document.getElementById('projectFilter');
+                const modalProjectId = document.getElementById('modalProjectId');
+
+                projectFilter.innerHTML = '';
+                modalProjectId.innerHTML = '';
+
+                if (!projects || projects.length === 0) {
+                    projectFilter.innerHTML = `<option value="">${I18n.t('issues.filter.noProjects')}</option>`;
+                    document.getElementById('issuesTableBody').innerHTML = `
+                        <tr>
+                            <td colspan="7" class="py-12 text-center text-text-subtle">
+                                <span class="material-symbols-outlined text-4xl mb-2 text-text-subtle/50">folder_off</span>
+                                <p>${I18n.t('issues.table.noProjectPrompt')}</p>
+                            </td>
+                        </tr>
+                    `;
+                    updateCreateIssueButtonVisibility();
+                    return;
+                }
+
+                projects.forEach(p => {
+                    const opt = document.createElement('option');
+                    opt.value = p.id;
+                    opt.textContent = `[${p.key}] ${p.name}`;
+                    projectFilter.appendChild(opt);
+
+                    if (isCurrentUserPmOrAdmin(p.id)) {
+                        const modalOpt = document.createElement('option');
+                        modalOpt.value = p.id;
+                        modalOpt.textContent = `[${p.key}] ${p.name}`;
+                        modalProjectId.appendChild(modalOpt);
+                    }
+                });
+
+                // Default to first project or query param projectId
+                const urlParams = new URLSearchParams(window.location.search);
+                const requestedProjectId = urlParams.get('projectId');
+                if (requestedProjectId && projects.some(p => p.id == requestedProjectId)) {
+                    projectFilter.value = requestedProjectId;
+                    currentProjectId = requestedProjectId;
+                } else {
+                    currentProjectId = projects[0].id;
+                }
+
+                updateCreateIssueButtonVisibility();
+                await loadIssues(currentProjectId);
+            } catch (err) {
+                console.error("Failed to load projects:", err);
+            }
+        }
+
+        async function onProjectChange() {
+            currentProjectId = document.getElementById('projectFilter').value;
+            updateCreateIssueButtonVisibility();
+            if (currentProjectId) {
+                await loadIssues(currentProjectId);
+            }
+        }
+
+        // Fetch Issues for Selected Project
+        // Server-Side Pagination State
+        let currentIssuePage = 1;
+        let issuePageSize = 10;
+        let totalIssueElements = 0;
+        let totalIssuePages = 1;
+        let searchDebounceTimeout = null;
+
+        // Fetch Issues for Selected Project (Server-Side Pagination)
+        async function loadIssues(projectId) {
+            if (!projectId) return;
+            const tableBody = document.getElementById('issuesTableBody');
+            tableBody.innerHTML = `
+                <tr>
+                    <td colspan="8" class="py-12 text-center text-text-subtle">
+                        <span class="material-symbols-outlined text-4xl mb-2 text-text-subtle/50 animate-spin">progress_activity</span>
+                        <p>${I18n.t('issues.table.loading')}</p>
+                    </td>
+                </tr>
+            `;
+
+            const status = document.getElementById('statusFilter')?.value || '';
+            const priority = document.getElementById('priorityFilter')?.value || '';
+            const labelId = document.getElementById('labelFilter')?.value || '';
+            const keyword = (document.getElementById('globalSearchInput')?.value || '').trim();
+
+            let url = `/projects/${projectId}/issues?page=${currentIssuePage - 1}&size=${issuePageSize}`;
+            if (status) url += `&status=${encodeURIComponent(status)}`;
+            if (priority) url += `&priority=${encodeURIComponent(priority)}`;
+            if (labelId) url += `&labelId=${encodeURIComponent(labelId)}`;
+            if (keyword) url += `&keyword=${encodeURIComponent(keyword)}`;
+            if (filterMyIssuesActive) url += `&myOnly=true`;
+            if (filterOverdueActive) url += `&isOverdue=true`;
+
+            try {
+                const response = await fetchApi(url);
+                const items = (response && response.content) ? response.content : (Array.isArray(response) ? response : []);
+                totalIssueElements = (response && typeof response.totalElements === 'number') ? response.totalElements : items.length;
+                totalIssuePages = (response && typeof response.totalPages === 'number') ? response.totalPages : (Math.ceil(totalIssueElements / issuePageSize) || 1);
+
+                renderIssues(items);
+                renderIssuesPagination();
+            } catch (err) {
+                console.error("Failed to load issues:", err);
+                tableBody.innerHTML = `
+                    <tr>
+                        <td colspan="8" class="py-8 text-center text-danger">
+                            <span class="material-symbols-outlined text-3xl mb-1">error</span>
+                            <p>${err.message}</p>
+                        </td>
+                    </tr>
+                `;
+                totalIssueElements = 0;
+                totalIssuePages = 1;
+                renderIssuesPagination();
+            }
+        }
+
+        function renderIssues(issues) {
+            const tableBody = document.getElementById('issuesTableBody');
+
+            currentLoadedIssues = issues || [];
+
+            if (!issues || issues.length === 0) {
+                tableBody.innerHTML = `
+                    <tr>
+                        <td colspan="8" class="py-12 text-center text-text-subtle">
+                            <span class="material-symbols-outlined text-4xl mb-2 text-text-subtle/50">inbox</span>
+                            <p>${I18n.t('issues.table.empty')}</p>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            const currentUser = Auth.getUser() || {};
+            const isPmOrAdmin = isCurrentUserPmOrAdmin();
+
+            tableBody.innerHTML = issues.map(issue => {
+                const statusClasses = getStatusBadgeClass(issue.status);
+                const priorityClasses = getPriorityBadgeClass(issue.priority);
+                const statusLabel = I18n.getStatusName(issue.status);
+                const priorityLabel = I18n.getPriorityName(issue.priority);
+                const assigneeName = issue.assignee ? issue.assignee.fullName : I18n.t('issues.table.unassigned');
+                const assigneeInitial = issue.assignee ? issue.assignee.fullName.substring(0, 1).toUpperCase() : '?';
+                const formattedDueDate = issue.dueDate ? new Date(issue.dueDate).toLocaleDateString() : '-';
+                const isOverdue = issue.dueDate && new Date(issue.dueDate) < new Date() && issue.status !== 'DONE';
+
+                const isReporter = issue.reporter && (issue.reporter.id === currentUser.userId || issue.reporter.id === currentUser.id || issue.reporter.email === currentUser.email);
+                const canEdit = isPmOrAdmin;
+                const canDelete = isPmOrAdmin || isReporter;
+
+                const labelsHtml = (issue.labels && issue.labels.length > 0)
+                    ? `<div class="flex flex-wrap gap-1 max-w-[200px]">${issue.labels.map(l => LabelUtils.renderBadge(l, { size: 'xs' })).join('')}</div>`
+                    : '<span class="text-text-subtle/40 text-xs">-</span>';
+
+                return `
+                    <tr class="hover:bg-surface-container-low/60 dark:hover:bg-inverse-surface/80 transition-colors cursor-pointer group" onclick="viewIssueDetail(${currentProjectId}, ${issue.id})">
+                        <td class="py-3 px-4 font-mono font-bold text-xs text-primary group-hover:underline">
+                            ${issue.issueKey || ('#' + issue.id)}
+                        </td>
+                        <td class="py-3 px-4 font-medium text-text-main max-w-md truncate">
+                            ${issue.title}
+                        </td>
+                        <td class="py-3 px-4">
+                            ${labelsHtml}
+                        </td>
+                        <td class="py-3 px-4">
+                            <span class="px-2.5 py-1 rounded-full text-xs font-semibold ${statusClasses}">
+                                ${statusLabel}
+                            </span>
+                        </td>
+                        <td class="py-3 px-4">
+                            <span class="px-2 py-0.5 rounded text-xs font-semibold ${priorityClasses}">
+                                ${priorityLabel}
+                            </span>
+                        </td>
+                        <td class="py-3 px-4">
+                            <div class="flex items-center gap-2">
+                                <div class="w-6 h-6 rounded-full bg-secondary-container text-primary flex items-center justify-center text-xs font-bold shrink-0 overflow-hidden border border-border/40">
+                                    ${(issue.assignee && issue.assignee.avatarUrl) 
+                                        ? `<img src="${issue.assignee.avatarUrl}" class="w-full h-full object-cover rounded-full" onerror="this.outerHTML='<span class=\\'text-xs font-bold\\'>${assigneeInitial}</span>'" loading="lazy" />` 
+                                        : assigneeInitial}
+                                </div>
+                                <span class="text-xs text-text-main truncate max-w-[120px]">${assigneeName}</span>
+                            </div>
+                        </td>
+                        <td class="py-3 px-4 text-xs ${isOverdue ? 'text-danger font-semibold' : 'text-text-subtle'}">
+                            <span class="inline-flex items-center gap-1">
+                                ${isOverdue ? '<span class="material-symbols-outlined text-[14px] text-danger">alarm</span>' : ''}
+                                <span>${formattedDueDate}</span>
+                            </span>
+                        </td>
+                        <td class="py-3 px-4 text-right" onclick="event.stopPropagation()">
+                            <div class="flex items-center justify-end gap-1">
+                                <button onclick="viewIssueDetail(${currentProjectId}, ${issue.id})" class="p-1 text-text-subtle hover:text-primary rounded hover:bg-surface-container-high transition-colors cursor-pointer" title="${I18n.t('issues.table.viewDetail')}">
+                                    <span class="material-symbols-outlined text-[18px]">open_in_new</span>
+                                </button>
+                                ${canEdit ? `
+                                    <button onclick="openEditIssueModal(${issue.id})" class="p-1 text-text-subtle hover:text-primary rounded hover:bg-surface-container-high transition-colors cursor-pointer" title="Chỉnh sửa công việc">
+                                        <span class="material-symbols-outlined text-[18px]">edit</span>
+                                    </button>
+                                ` : ''}
+                                ${canDelete ? `
+                                    <button onclick="confirmDeleteIssue(${issue.id}, '${(issue.issueKey || ('#' + issue.id)).replace(/'/g, "\\'")}')" class="p-1 text-text-subtle hover:text-danger rounded hover:bg-danger/10 transition-colors cursor-pointer" title="Xóa công việc">
+                                        <span class="material-symbols-outlined text-[18px]">delete</span>
+                                    </button>
+                                ` : ''}
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function getStatusBadgeClass(status) {
+            switch (status) {
+                case 'TODO': return 'bg-surface-container-high text-text-subtle';
+                case 'IN_PROGRESS': return 'bg-primary/10 text-primary';
+                case 'REVIEW': return 'bg-warning/15 text-warning';
+                case 'DONE': return 'bg-success/15 text-success';
+                default: return 'bg-surface-container text-text-subtle';
+            }
+        }
+
+        function getPriorityBadgeClass(priority) {
+            switch (priority) {
+                case 'HIGH': return 'bg-danger/10 text-danger';
+                case 'MEDIUM': return 'bg-warning/10 text-warning';
+                case 'LOW': return 'bg-success/10 text-success';
+                default: return 'bg-surface-container text-text-subtle';
+            }
+        }
+
+        function onIssuePageSizeChange(size) {
+            issuePageSize = parseInt(size, 10) || 10;
+            currentIssuePage = 1;
+            loadIssues(currentProjectId);
+        }
+
+        function goToIssuePage(page) {
+            if (page < 1 || page > totalIssuePages || page === currentIssuePage) return;
+            currentIssuePage = page;
+            loadIssues(currentProjectId);
+        }
+
+        function toggleMyIssuesFilter() {
+            filterMyIssuesActive = !filterMyIssuesActive;
+            updateQuickFilterButtonUI();
+            applyFilters();
+        }
+
+        function toggleOverdueFilter() {
+            filterOverdueActive = !filterOverdueActive;
+            updateQuickFilterButtonUI();
+            applyFilters();
+        }
+
+        function updateQuickFilterButtonUI() {
+            const btnMy = document.getElementById('btnFilterMyIssues');
+            const iconMy = document.getElementById('iconFilterMyIssues');
+            if (btnMy) {
+                if (filterMyIssuesActive) {
+                    btnMy.className = 'h-8 px-2.5 rounded-lg border border-primary text-xs font-semibold text-white bg-primary shadow-sm flex items-center gap-1.5 transition-all cursor-pointer';
+                    if (iconMy) iconMy.className = 'material-symbols-outlined text-[16px] text-white';
+                } else {
+                    btnMy.className = 'h-8 px-2.5 rounded-lg border border-border text-xs font-medium text-text-main bg-surface-container-low hover:border-primary flex items-center gap-1.5 transition-all cursor-pointer shadow-sm';
+                    if (iconMy) iconMy.className = 'material-symbols-outlined text-[16px] text-text-subtle';
+                }
+            }
+
+            const btnOverdue = document.getElementById('btnFilterOverdue');
+            const iconOverdue = document.getElementById('iconFilterOverdue');
+            if (btnOverdue) {
+                if (filterOverdueActive) {
+                    btnOverdue.className = 'h-8 px-2.5 rounded-lg border border-danger text-xs font-semibold text-white bg-danger shadow-sm flex items-center gap-1.5 transition-all cursor-pointer';
+                    if (iconOverdue) iconOverdue.className = 'material-symbols-outlined text-[16px] text-white';
+                } else {
+                    btnOverdue.className = 'h-8 px-2.5 rounded-lg border border-border text-xs font-medium text-text-main bg-surface-container-low hover:border-danger flex items-center gap-1.5 transition-all cursor-pointer shadow-sm';
+                    if (iconOverdue) iconOverdue.className = 'material-symbols-outlined text-[16px] text-text-subtle';
+                }
+            }
+        }
+
+        function applyFilters() {
+            currentIssuePage = 1;
+            loadIssues(currentProjectId);
+        }
+
+        function renderIssuesPagination() {
+            // Update info text
+            const infoEl = document.getElementById('issuePaginationInfo');
+            if (infoEl) {
+                if (totalIssueElements === 0) {
+                    infoEl.textContent = I18n.t('pagination.showingEmpty');
+                } else {
+                    const startIdx = (currentIssuePage - 1) * issuePageSize + 1;
+                    const endIdx = Math.min(currentIssuePage * issuePageSize, totalIssueElements);
+                    infoEl.textContent = I18n.t('pagination.showing', {
+                        start: startIdx,
+                        end: endIdx,
+                        total: totalIssueElements
+                    });
+                }
+            }
+
+            // Update select options text according to language
+            updatePageSizeSelectOptions('issuePageSizeSelect', issuePageSize);
+
+            // Update badge in filter bar
+            const badgeEl = document.getElementById('issueCountBadge');
+            if (badgeEl) {
+                badgeEl.textContent = `${I18n.t('issues.filter.showing')} ${totalIssueElements} ${I18n.t('issues.filter.issuesCount')}`;
+            }
+
+            // Render pagination buttons
+            renderPaginationButtons('issuePaginationControls', currentIssuePage, totalIssuePages, 'goToIssuePage');
+        }
+
+        function updatePageSizeSelectOptions(selectId, currentSize) {
+            const select = document.getElementById(selectId);
+            if (!select) return;
+            const perPageText = I18n.t('pagination.perPage');
+            const sizes = [5, 10, 20, 50, 100];
+            select.innerHTML = sizes.map(s => 
+                `<option value="${s}" ${s === currentSize ? 'selected' : ''}>${s} / ${perPageText}</option>`
+            ).join('');
+        }
+
+        function renderPaginationButtons(containerId, currentPage, totalPages, goToPageFnName) {
+            const container = document.getElementById(containerId);
+            if (!container) return;
+
+            const isPrevDisabled = currentPage <= 1;
+            let html = `
+                <button type="button" onclick="${isPrevDisabled ? '' : `${goToPageFnName}(${currentPage - 1})`}" 
+                    class="w-8 h-8 rounded-lg border border-border flex items-center justify-center text-xs transition-colors ${
+                        isPrevDisabled 
+                            ? 'opacity-40 cursor-not-allowed text-text-subtle' 
+                            : 'text-text-main hover:bg-surface-container-low cursor-pointer'
+                    }" 
+                    title="Previous Page" ${isPrevDisabled ? 'disabled' : ''}>
+                    <span class="material-symbols-outlined text-[16px]">chevron_left</span>
+                </button>
+            `;
+
+            const pages = getPaginationPageList(currentPage, totalPages);
+            pages.forEach(p => {
+                if (p === '...') {
+                    html += `<span class="w-8 h-8 flex items-center justify-center text-text-subtle text-xs select-none">...</span>`;
+                } else {
+                    const isActive = p === currentPage;
+                    html += `
+                        <button type="button" onclick="${goToPageFnName}(${p})" 
+                            class="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-semibold transition-all cursor-pointer ${
+                                isActive 
+                                    ? 'bg-primary text-white shadow-sm' 
+                                    : 'border border-border text-text-main hover:bg-surface-container-low'
+                            }">
+                            ${p}
+                        </button>
+                    `;
+                }
+            });
+
+            const isNextDisabled = currentPage >= totalPages;
+            html += `
+                <button type="button" onclick="${isNextDisabled ? '' : `${goToPageFnName}(${currentPage + 1})`}" 
+                    class="w-8 h-8 rounded-lg border border-border flex items-center justify-center text-xs transition-colors ${
+                        isNextDisabled 
+                            ? 'opacity-40 cursor-not-allowed text-text-subtle' 
+                            : 'text-text-main hover:bg-surface-container-low cursor-pointer'
+                    }" 
+                    title="Next Page" ${isNextDisabled ? 'disabled' : ''}>
+                    <span class="material-symbols-outlined text-[16px]">chevron_right</span>
+                </button>
+            `;
+
+            container.innerHTML = html;
+        }
+
+        function getPaginationPageList(currentPage, totalPages) {
+            if (totalPages <= 7) {
+                return Array.from({ length: totalPages }, (_, i) => i + 1);
+            }
+            if (currentPage <= 4) {
+                return [1, 2, 3, 4, 5, '...', totalPages];
+            }
+            if (currentPage >= totalPages - 3) {
+                return [1, '...', totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages];
+            }
+            return [1, '...', currentPage - 1, currentPage, currentPage + 1, '...', totalPages];
+        }
+
+        window.onLanguageChanged = function() {
+            renderIssuesPagination();
+        };
+
+        document.getElementById('globalSearchInput').addEventListener('input', () => {
+            clearTimeout(searchDebounceTimeout);
+            searchDebounceTimeout = setTimeout(() => {
+                applyFilters();
+            }, 300);
+        });
+
+        function viewIssueDetail(projectId, issueId) {
+            window.location.href = `issue-detail.html?projectId=${projectId}&issueId=${issueId}`;
+        }
+
+        // Modal Handling
+        async function populateModalAssignees(projectId) {
+            const assigneeSelect = document.getElementById('modalIssueAssignee');
+            if (!assigneeSelect) return;
+            assigneeSelect.innerHTML = '<option value="">Unassigned (Chưa gán)</option>';
+            if (!projectId) return;
+
+            try {
+                const projectData = await fetchApi(`/projects/${projectId}`);
+                const members = (projectData && projectData.members) ? projectData.members : [];
+                members.forEach(m => {
+                    const u = m.user || {};
+                    if (u.locked) return;
+                    const uName = u.fullName || u.email || 'User #' + u.id;
+                    const opt = document.createElement('option');
+                    opt.value = u.id;
+                    opt.textContent = `${uName} (${m.projectRole || 'MEMBER'})`;
+                    assigneeSelect.appendChild(opt);
+                });
+            } catch (e) {
+                console.error("Failed to load project members for modal:", e);
+            }
+        }
+
+        // Attachments for Create Issue Modal
+        let modalCreateIssueSelectedFiles = [];
+
+        function onModalCreateFilesSelected(input) {
+            const files = Array.from(input.files || []);
+            if (modalCreateIssueSelectedFiles.length + files.length > 10) {
+                alert("Chỉ được đính kèm tối đa 10 ảnh cho một công việc.");
+                input.value = '';
+                return;
+            }
+            modalCreateIssueSelectedFiles = modalCreateIssueSelectedFiles.concat(files);
+            renderModalCreateFilesPreview();
+            input.value = '';
+        }
+
+        function renderModalCreateFilesPreview() {
+            const container = document.getElementById('modalCreateFilesPreview');
+            const countText = document.getElementById('modalCreateFilesCountText');
+            if (!container) return;
+
+            if (modalCreateIssueSelectedFiles.length === 0) {
+                container.innerHTML = '';
+                if (countText) countText.textContent = 'Chưa chọn ảnh nào';
+                return;
+            }
+
+            if (countText) countText.textContent = `Đã chọn ${modalCreateIssueSelectedFiles.length} ảnh`;
+            container.innerHTML = modalCreateIssueSelectedFiles.map((file, idx) => `
+                <div class="relative group rounded-lg overflow-hidden border border-border bg-surface-container-high w-14 h-14 flex items-center justify-center">
+                    <img src="${URL.createObjectURL(file)}" class="w-full h-full object-cover" />
+                    <button type="button" onclick="removeModalCreateFile(${idx})" class="absolute top-0.5 right-0.5 w-4 h-4 bg-black/70 hover:bg-danger text-white rounded-full flex items-center justify-center text-[10px] cursor-pointer" title="Gỡ">×</button>
+                </div>
+            `).join('');
+        }
+
+        function removeModalCreateFile(idx) {
+            modalCreateIssueSelectedFiles.splice(idx, 1);
+            renderModalCreateFilesPreview();
+        }
+
+        function resetModalCreateFiles() {
+            modalCreateIssueSelectedFiles = [];
+            renderModalCreateFilesPreview();
+            const input = document.getElementById('modalCreateIssueFiles');
+            if (input) input.value = '';
+        }
+
+        async function openCreateIssueModal() {
+            if (!isCurrentUserPmOrAdmin(currentProjectId)) {
+                showIssuesAlert('Chỉ Project Manager hoặc Admin mới có quyền tạo công việc trong dự án này', false);
+                return;
+            }
+
+            const modal = document.getElementById('createIssueModal');
+            const dueDateInput = document.getElementById('modalIssueDueDate');
+            if (dueDateInput) {
+                dueDateInput.min = new Date().toISOString().split('T')[0];
+            }
+
+            resetModalCreateFiles();
+            selectedCreateLabelIds.clear();
+            renderCreateIssueLabels();
+
+            const modalProjectId = document.getElementById('modalProjectId');
+            if (currentProjectId && isCurrentUserPmOrAdmin(currentProjectId)) {
+                modalProjectId.value = currentProjectId;
+                await populateModalAssignees(currentProjectId);
+            } else if (modalProjectId.options.length > 0) {
+                modalProjectId.value = modalProjectId.options[0].value;
+                await populateModalAssignees(modalProjectId.value);
+            }
+            document.getElementById('createIssueError').classList.add('hidden');
+            modal.classList.remove('hidden');
+            I18n.applyI18n();
+        }
+
+        document.getElementById('modalProjectId').addEventListener('change', async (e) => {
+            await populateModalAssignees(e.target.value);
+        });
+
+        function closeCreateIssueModal() {
+            document.getElementById('createIssueModal').classList.add('hidden');
+            document.getElementById('createIssueForm').reset();
+            resetModalCreateFiles();
+            selectedCreateLabelIds.clear();
+        }
+
+        document.getElementById('createIssueForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const projectId = document.getElementById('modalProjectId').value;
+            const title = document.getElementById('modalIssueTitle').value;
+            const description = document.getElementById('modalIssueDesc').value;
+            const priority = document.getElementById('modalIssuePriority').value;
+            const dueDateValue = document.getElementById('modalIssueDueDate').value;
+            const assigneeVal = document.getElementById('modalIssueAssignee').value;
+
+            const errBox = document.getElementById('createIssueError');
+            errBox.classList.add('hidden');
+
+            if (!isCurrentUserPmOrAdmin(projectId)) {
+                errBox.textContent = 'Chỉ Project Manager hoặc Admin mới có quyền tạo công việc trong dự án này';
+                errBox.classList.remove('hidden');
+                return;
+            }
+
+            const todayStr = new Date().toISOString().split('T')[0];
+            if (dueDateValue && dueDateValue < todayStr) {
+                errBox.textContent = 'Deadline phải lớn hơn hoặc bằng thời gian hiện tại';
+                errBox.classList.remove('hidden');
+                return;
+            }
+
+            const btn = document.getElementById('btnSubmitCreateIssue');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="material-symbols-outlined text-[16px] animate-spin">progress_activity</span>';
+
+            try {
+                const payload = {
+                    title,
+                    description,
+                    priority,
+                    dueDate: dueDateValue ? (dueDateValue + 'T23:59:59') : null,
+                    assigneeId: assigneeVal ? parseInt(assigneeVal) : null,
+                    labelIds: Array.from(selectedCreateLabelIds)
+                };
+
+                const createdIssue = await fetchApi(`/projects/${projectId}/issues`, {
+                    method: 'POST',
+                    body: JSON.stringify(payload)
+                });
+
+                // Nếu có đính kèm ảnh, upload ảnh ngay sau khi tạo công việc
+                if (modalCreateIssueSelectedFiles.length > 0 && createdIssue && createdIssue.id) {
+                    const formData = new FormData();
+                    modalCreateIssueSelectedFiles.forEach(f => formData.append('files', f));
+                    await fetchApi(`/images/issues/${createdIssue.id}`, {
+                        method: 'POST',
+                        body: formData
+                    });
+                }
+
+                closeCreateIssueModal();
+                if (projectId == currentProjectId) {
+                    await loadIssues(currentProjectId);
+                } else {
+                    document.getElementById('projectFilter').value = projectId;
+                    currentProjectId = projectId;
+                    await loadIssues(projectId);
+                }
+            } catch (err) {
+                errBox.textContent = err.message || 'Failed to create issue';
+                errBox.classList.remove('hidden');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = `<span class="material-symbols-outlined text-[16px]">check</span> <span data-i18n="issues.modal.create">${I18n.t('issues.modal.create')}</span>`;
+            }
+        });
+
+        // -------------------------------------------------------------
+        // Edit & Delete Issue Functions (Project Manager / Admin / Reporter)
+        // -------------------------------------------------------------
+        let currentLoadedIssues = [];
+
+        function getCurrentProject() {
+            return (projects || []).find(p => p.id == currentProjectId);
+        }
+
+        function isCurrentUserPmOrAdmin(targetProjectId) {
+            const user = Auth.getUser() || {};
+            // 1. Admin hệ thống
+            if (user.role === 'ADMIN' || user.role?.name === 'ADMIN' || (typeof Auth.isAdmin === 'function' && Auth.isAdmin())) return true;
+
+            const projId = targetProjectId !== undefined ? targetProjectId : currentProjectId;
+            const proj = (projects || []).find(p => p.id == projId);
+            if (!proj) return false;
+
+            const uid = user.id || user.userId;
+            const uEmail = user.email ? user.email.toLowerCase() : null;
+
+            // 2. Creator của project (PM tạo dự án)
+            if (proj.creator) {
+                const cUid = proj.creator.id || proj.creator.userId;
+                const cEmail = proj.creator.email ? proj.creator.email.toLowerCase() : null;
+                if ((uid && cUid === uid) || (uEmail && cEmail && uEmail === cEmail)) {
+                    return true;
+                }
+            }
+
+            // 3. Member có role PROJECT_MANAGER
+            if (proj.members && Array.isArray(proj.members)) {
+                const member = proj.members.find(m => {
+                    const u = m.user || m;
+                    const mUid = u.id || u.userId;
+                    const mEmail = u.email ? u.email.toLowerCase() : null;
+                    return (uid && mUid === uid) || (uEmail && mEmail && uEmail === mEmail);
+                });
+                if (member) {
+                    const roleName = member.projectRole?.name || member.projectRole;
+                    if (roleName === 'PROJECT_MANAGER') return true;
+                }
+            }
+            return false;
+        }
+
+        function updateCreateIssueButtonVisibility() {
+            const btn = document.getElementById('btnOpenCreateIssue');
+            const importBtn = document.getElementById('btnOpenImportIssues');
+            const canManage = isCurrentUserPmOrAdmin(currentProjectId);
+
+            if (btn) {
+                if (canManage) btn.classList.remove('hidden');
+                else btn.classList.add('hidden');
+            }
+            if (importBtn) {
+                if (canManage) importBtn.classList.remove('hidden');
+                else importBtn.classList.add('hidden');
+            }
+            const manageLabelsBtn = document.getElementById('btnOpenManageLabels');
+            if (manageLabelsBtn) {
+                if (Auth.isAdmin()) {
+                    manageLabelsBtn.classList.remove('hidden');
+                } else {
+                    manageLabelsBtn.classList.add('hidden');
+                }
+            }
+        }
+
+        function showIssuesAlert(msg, isSuccess = true) {
+            const alertBox = document.getElementById('issuesAlert');
+            if (!alertBox) return;
+            alertBox.className = isSuccess
+                ? 'mb-6 p-3.5 rounded-lg text-xs font-semibold bg-success/10 text-success border border-success/20 block animate-fade-in'
+                : 'mb-6 p-3.5 rounded-lg text-xs font-semibold bg-danger/10 text-danger border border-danger/20 block animate-fade-in';
+            alertBox.textContent = msg;
+            setTimeout(() => { alertBox.className = 'hidden'; }, 4000);
+        }
+
+        function openEditIssueModal(issueId) {
+            if (!isCurrentUserPmOrAdmin()) {
+                showIssuesAlert('Chỉ Project Manager hoặc Admin mới có quyền chỉnh sửa công việc', false);
+                return;
+            }
+
+            const issue = currentLoadedIssues.find(i => i.id === issueId);
+            if (!issue) return;
+
+            document.getElementById('editIssueId').value = issue.id;
+            document.getElementById('editIssueVersion').value = issue.version || 0;
+            document.getElementById('editIssueKeyBadge').textContent = issue.issueKey || ('#' + issue.id);
+            document.getElementById('editIssueTitle').value = issue.title || '';
+            document.getElementById('editIssueDesc').value = issue.description || '';
+            document.getElementById('editIssuePriority').value = issue.priority || 'MEDIUM';
+            document.getElementById('editIssueDueDate').value = issue.dueDate ? issue.dueDate.substring(0, 10) : '';
+            document.getElementById('editIssueDueDate').min = new Date().toISOString().split('T')[0];
+            document.getElementById('editIssueError').classList.add('hidden');
+
+            // Populate assignees from current project
+            const assigneeSelect = document.getElementById('editIssueAssignee');
+            assigneeSelect.innerHTML = '<option value="">Unassigned (Chưa gán)</option>';
+            const proj = getCurrentProject();
+            if (proj && proj.members) {
+                proj.members.forEach(m => {
+                    const u = m.user || {};
+                    const opt = document.createElement('option');
+                    opt.value = u.id;
+                    opt.textContent = `${u.fullName || u.email} (${m.projectRole || 'MEMBER'})`;
+                    assigneeSelect.appendChild(opt);
+                });
+            }
+            if (issue.assignee && issue.assignee.id) {
+                assigneeSelect.value = issue.assignee.id;
+            } else {
+                assigneeSelect.value = '';
+            }
+
+            // If not PM/Admin, disable changing assignee, priority & deadline
+            const isPmOrAdmin = isCurrentUserPmOrAdmin();
+            assigneeSelect.disabled = !isPmOrAdmin;
+
+            const priorityInput = document.getElementById('editIssuePriority');
+            const priorityNotice = document.getElementById('editIssuePriorityNotice');
+            priorityInput.disabled = !isPmOrAdmin;
+            if (!isPmOrAdmin) {
+                priorityInput.classList.add('cursor-not-allowed', 'opacity-60');
+                priorityInput.title = I18n.t('issues.modal.noticePriority');
+                priorityNotice?.classList.remove('hidden');
+            } else {
+                priorityInput.classList.remove('cursor-not-allowed', 'opacity-60');
+                priorityInput.title = "";
+                priorityNotice?.classList.add('hidden');
+            }
+
+            const dueDateInput = document.getElementById('editIssueDueDate');
+            const dueDateNotice = document.getElementById('editIssueDueDateNotice');
+            dueDateInput.disabled = !isPmOrAdmin;
+            if (!isPmOrAdmin) {
+                dueDateInput.classList.add('cursor-not-allowed', 'opacity-60');
+                dueDateInput.title = I18n.t('issues.modal.noticeDueDate');
+                dueDateNotice?.classList.remove('hidden');
+            } else {
+                dueDateInput.classList.remove('cursor-not-allowed', 'opacity-60');
+                dueDateInput.title = "";
+                dueDateNotice?.classList.add('hidden');
+            }
+
+            selectedEditLabelIds = new Set((issue.labels || []).map(l => (typeof l === 'object' ? l.id : l)));
+            renderEditIssueLabels();
+
+            document.getElementById('editIssueModal').classList.remove('hidden');
+        }
+
+        function closeEditIssueModal() {
+            document.getElementById('editIssueModal').classList.add('hidden');
+            document.getElementById('editIssueForm').reset();
+            selectedEditLabelIds.clear();
+        }
+
+        document.getElementById('editIssueForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const issueId = document.getElementById('editIssueId').value;
+            const version = parseInt(document.getElementById('editIssueVersion').value, 10);
+            const title = document.getElementById('editIssueTitle').value.trim();
+            const description = document.getElementById('editIssueDesc').value.trim();
+            const priority = document.getElementById('editIssuePriority').value;
+            const dueDateValue = document.getElementById('editIssueDueDate').value;
+            const assigneeVal = document.getElementById('editIssueAssignee').value;
+            const isPmOrAdmin = isCurrentUserPmOrAdmin();
+
+            const errBox = document.getElementById('editIssueError');
+            errBox.classList.add('hidden');
+
+            const todayStr = new Date().toISOString().split('T')[0];
+            if (isPmOrAdmin && dueDateValue && dueDateValue < todayStr) {
+                errBox.textContent = 'Deadline phải lớn hơn hoặc bằng thời gian hiện tại';
+                errBox.classList.remove('hidden');
+                return;
+            }
+
+            const btn = document.getElementById('btnSubmitEditIssue');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="material-symbols-outlined text-[16px] animate-spin">progress_activity</span>';
+
+            try {
+                const payload = {
+                    title,
+                    description,
+                    version,
+                    labelIds: Array.from(selectedEditLabelIds)
+                };
+
+                // Only PM or Admin can update priority, dueDate & assignee
+                if (isPmOrAdmin) {
+                    payload.priority = priority;
+                    payload.dueDate = dueDateValue ? (dueDateValue + 'T23:59:59') : null;
+                    payload.assigneeId = assigneeVal ? parseInt(assigneeVal, 10) : null;
+                }
+
+                await fetchApi(`/projects/${currentProjectId}/issues/${issueId}`, {
+                    method: 'PUT',
+                    body: JSON.stringify(payload)
+                });
+
+                closeEditIssueModal();
+                showIssuesAlert('Đã cập nhật công việc thành công!', true);
+                await loadIssues(currentProjectId);
+            } catch (err) {
+                errBox.textContent = err.message || 'Không thể cập nhật công việc';
+                errBox.classList.remove('hidden');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<span class="material-symbols-outlined text-[16px]">save</span> <span>Lưu thay đổi</span>';
+            }
+        });
+
+        async function confirmDeleteIssue(issueId, issueKey) {
+            if (!confirm(`Bạn có chắc chắn muốn xóa công việc ${issueKey}? Toàn bộ dữ liệu và bình luận liên quan sẽ bị xóa vĩnh viễn.`)) {
+                return;
+            }
+
+            try {
+                await fetchApi(`/projects/${currentProjectId}/issues/${issueId}`, {
+                    method: 'DELETE'
+                });
+                showIssuesAlert(`Đã xóa công việc ${issueKey} thành công!`, true);
+                await loadIssues(currentProjectId);
+            } catch (err) {
+                showIssuesAlert(err.message || 'Không thể xóa công việc', false);
+            }
+        }
+
+        // -------------------------------------------------------------
+        // Excel Export & Import Functions (Jira Standards)
+        // -------------------------------------------------------------
+        function toggleExportDropdown(event) {
+            if (event) event.stopPropagation();
+            const menu = document.getElementById('exportDropdownMenu');
+            if (menu) {
+                menu.classList.toggle('hidden');
+            }
+        }
+
+        document.addEventListener('click', function(e) {
+            const menu = document.getElementById('exportDropdownMenu');
+            if (menu && !menu.classList.contains('hidden')) {
+                const container = document.getElementById('exportDropdownContainer');
+                if (container && !container.contains(e.target)) {
+                    menu.classList.add('hidden');
+                }
+            }
+        });
+
+        async function exportIssuesExcel(scope = 'current') {
+            const menu = document.getElementById('exportDropdownMenu');
+            if (menu) menu.classList.add('hidden');
+
+            if (!currentProjectId) {
+                showIssuesAlert('Vui lòng chọn dự án trước khi xuất Excel', false);
+                return;
+            }
+
+            const status = document.getElementById('statusFilter')?.value || '';
+            const priority = document.getElementById('priorityFilter')?.value || '';
+            const labelId = document.getElementById('labelFilter')?.value || '';
+            const keyword = (document.getElementById('globalSearchInput')?.value || '').trim();
+
+            let query = `?scope=${encodeURIComponent(scope)}`;
+            if (status) query += `&status=${encodeURIComponent(status)}`;
+            if (priority) query += `&priority=${encodeURIComponent(priority)}`;
+            if (labelId) query += `&labelId=${encodeURIComponent(labelId)}`;
+            if (keyword) query += `&keyword=${encodeURIComponent(keyword)}`;
+            if (filterMyIssuesActive) query += `&myOnly=true`;
+            if (filterOverdueActive) query += `&isOverdue=true`;
+
+            try {
+                showIssuesAlert('Đang chuẩn bị file Excel...', true);
+                const proj = getCurrentProject();
+                const projKey = proj ? proj.key : 'PROJECT';
+                const filename = `${projKey}_Issues_${scope}_${new Date().toISOString().slice(0, 10)}.xlsx`;
+                await downloadBinaryFile(`/projects/${currentProjectId}/issues/export${query}`, filename);
+                showIssuesAlert('Xuất file Excel thành công!', true);
+            } catch (err) {
+                console.error('Export failed:', err);
+                showIssuesAlert('Xuất file Excel thất bại: ' + (err.message || 'Lỗi hệ thống'), false);
+            }
+        }
+
+        async function downloadIssueTemplate() {
+            if (!currentProjectId) {
+                showIssuesAlert('Vui lòng chọn dự án', false);
+                return;
+            }
+            try {
+                await downloadBinaryFile(`/projects/${currentProjectId}/issues/import-template`, 'Issue_Import_Template.xlsx');
+            } catch (err) {
+                console.error('Download template failed:', err);
+                showIssuesAlert('Tải file mẫu thất bại: ' + (err.message || 'Lỗi hệ thống'), false);
+            }
+        }
+
+        async function downloadBinaryFile(endpoint, defaultFilename) {
+            const lang = localStorage.getItem('app_lang') || 'en';
+            const headers = {
+                'Accept-Language': lang
+            };
+            if (Auth.isAuthenticated()) {
+                headers['Authorization'] = `Bearer ${Auth.getToken()}`;
+            }
+
+            const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+                method: 'GET',
+                headers
+            });
+
+            if (!response.ok) {
+                const errData = await response.json().catch(() => ({}));
+                throw new Error(errData.message || `Lỗi tải file (${response.status})`);
+            }
+
+            const blob = await response.blob();
+            let filename = defaultFilename;
+            const disposition = response.headers.get('Content-Disposition');
+            if (disposition && disposition.indexOf('filename=') !== -1) {
+                const matches = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/.exec(disposition);
+                if (matches != null && matches[1]) {
+                    filename = matches[1].replace(/['"]/g, '');
+                }
+            }
+
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            a.remove();
+        }
+
+        let selectedImportFile = null;
+
+        function openImportModal() {
+            selectedImportFile = null;
+            const fileInput = document.getElementById('importFileInput');
+            if (fileInput) fileInput.value = '';
+            document.getElementById('importFileSelectedBox').classList.add('hidden');
+            document.getElementById('importDropzoneBox').classList.remove('hidden');
+            document.getElementById('importResultBox').classList.add('hidden');
+            const submitBtn = document.getElementById('btnSubmitImport');
+            submitBtn.disabled = true;
+            submitBtn.classList.add('opacity-50', 'cursor-not-allowed');
+
+            const modal = document.getElementById('importIssuesModal');
+            if (modal) {
+                modal.classList.remove('hidden');
+            }
+        }
+
+        function closeImportModal() {
+            const modal = document.getElementById('importIssuesModal');
+            if (modal) {
+                modal.classList.add('hidden');
+            }
+        }
+
+        function onImportFileSelected(input) {
+            if (input.files && input.files[0]) {
+                handleImportFile(input.files[0]);
+            }
+        }
+
+        function handleImportFile(file) {
+            if (!file.name.toLowerCase().endsWith('.xlsx') && !file.name.toLowerCase().endsWith('.xls')) {
+                alert('Vui lòng chọn file Excel định dạng .xlsx hoặc .xls');
+                return;
+            }
+            selectedImportFile = file;
+            document.getElementById('importFileName').textContent = file.name;
+            document.getElementById('importFileSize').textContent = (file.size / 1024).toFixed(1) + ' KB';
+            document.getElementById('importDropzoneBox').classList.add('hidden');
+            document.getElementById('importFileSelectedBox').classList.remove('hidden');
+            const submitBtn = document.getElementById('btnSubmitImport');
+            submitBtn.disabled = false;
+            submitBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+        }
+
+        function removeSelectedImportFile() {
+            selectedImportFile = null;
+            const fileInput = document.getElementById('importFileInput');
+            if (fileInput) fileInput.value = '';
+            document.getElementById('importFileSelectedBox').classList.add('hidden');
+            document.getElementById('importDropzoneBox').classList.remove('hidden');
+            const submitBtn = document.getElementById('btnSubmitImport');
+            submitBtn.disabled = true;
+            submitBtn.classList.add('opacity-50', 'cursor-not-allowed');
+        }
+
+        async function submitImportIssues() {
+            if (!selectedImportFile || !currentProjectId) return;
+
+            const btn = document.getElementById('btnSubmitImport');
+            const originalHtml = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = `<span class="material-symbols-outlined text-[16px] animate-spin">progress_activity</span> <span>${I18n.t('issues.import.uploading')}</span>`;
+
+            const resultBox = document.getElementById('importResultBox');
+            resultBox.classList.add('hidden');
+
+            try {
+                const formData = new FormData();
+                formData.append('file', selectedImportFile);
+
+                const result = await fetchApi(`/projects/${currentProjectId}/issues/import`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                resultBox.classList.remove('hidden');
+                const hasErrors = result.errors && result.errors.length > 0;
+                let html = '';
+
+                if (!hasErrors) {
+                    html = `
+                        <div class="p-4 rounded-xl bg-success/10 border border-success/30 text-success flex items-start gap-3">
+                            <span class="material-symbols-outlined text-[24px] text-success shrink-0">check_circle</span>
+                            <div>
+                                <h4 class="font-bold text-sm">${I18n.t('issues.import.resultSuccess', { count: result.successCount })}</h4>
+                                <p class="text-xs text-text-subtle mt-0.5">Tổng số dòng xử lý: ${result.totalRows}</p>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    html = `
+                        <div class="p-3.5 rounded-xl bg-warning/10 border border-warning/30 text-text-main mb-3 flex items-start gap-3">
+                            <span class="material-symbols-outlined text-[22px] text-warning shrink-0">warning</span>
+                            <div>
+                                <h4 class="font-bold text-xs text-text-main">${I18n.t('issues.import.resultPartial', { success: result.successCount, failed: result.failedCount })}</h4>
+                                <p class="text-[11px] text-text-subtle mt-0.5">Vui lòng kiểm tra các dòng lỗi bên dưới và thử lại.</p>
+                            </div>
+                        </div>
+                        <div class="border border-border rounded-lg max-h-48 overflow-y-auto">
+                            <table class="w-full text-left text-xs border-collapse">
+                                <thead class="bg-surface-container sticky top-0 font-semibold text-text-subtle border-b border-border">
+                                    <tr>
+                                        <th class="p-2 w-16 text-center">Dòng</th>
+                                        <th class="p-2 w-28">Trường</th>
+                                        <th class="p-2">Mô tả lỗi</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${result.errors.map(err => `
+                                        <tr class="border-b border-border/60 hover:bg-surface-container-low">
+                                            <td class="p-2 font-mono font-bold text-danger text-center">${err.row}</td>
+                                            <td class="p-2 font-mono text-text-subtle">${err.field || '-'}</td>
+                                            <td class="p-2 text-danger font-medium">${err.message}</td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    `;
+                }
+
+                resultBox.innerHTML = html;
+
+                if (result.successCount > 0) {
+                    await loadIssues(currentProjectId);
+                }
+            } catch (err) {
+                console.error('Import failed:', err);
+                resultBox.classList.remove('hidden');
+                resultBox.innerHTML = `
+                    <div class="p-3 bg-danger/10 text-danger border border-danger/20 rounded-lg text-xs flex items-center gap-2">
+                        <span class="material-symbols-outlined text-[18px]">error</span>
+                        <span>${err.message || 'Nhập file Excel thất bại'}</span>
+                    </div>
+                `;
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = originalHtml;
+            }
+        }
+
+        // =============================================================
+        // Manage Labels Modal Functions
+        // =============================================================
+        async function openManageLabelsModal() {
+            if (!Auth.isAdmin()) {
+                showIssuesAlert('Chỉ Quản trị viên (Admin) mới có quyền quản lý danh mục nhãn.', false);
+                return;
+            }
+            await loadAllLabels();
+            renderManageLabelsList();
+            const alertBox = document.getElementById('manageLabelsAlert');
+            if (alertBox) alertBox.className = 'hidden mb-4 p-3 rounded-lg text-xs font-semibold shrink-0';
+            const input = document.getElementById('newLabelInput');
+            if (input) input.value = '';
+            document.getElementById('manageLabelsModal').classList.remove('hidden');
+        }
+
+        function closeManageLabelsModal() {
+            document.getElementById('manageLabelsModal').classList.add('hidden');
+        }
+
+        function renderManageLabelsList() {
+            const list = document.getElementById('manageLabelsList');
+            const countEl = document.getElementById('manageLabelsCount');
+            if (!list) return;
+
+            if (countEl) countEl.textContent = allLabels.length;
+
+            if (!allLabels || allLabels.length === 0) {
+                list.innerHTML = `<div class="p-6 text-center text-xs text-text-subtle italic">${I18n.t('labels.emptyList') || 'Chưa có nhãn nào.'}</div>`;
+                return;
+            }
+
+            list.innerHTML = allLabels.map(l => {
+                const style = LabelUtils.getColorStyle(l.name);
+                const light = style.light || style;
+                const dark = style.dark || style;
+                return `
+                    <div id="label-row-${l.id}" class="flex items-center justify-between p-2 rounded-lg hover:bg-surface-container-low transition-colors">
+                        <div class="flex items-center gap-2">
+                            <span class="label-chip inline-flex items-center gap-1 font-medium rounded-md border text-xs px-2.5 py-1" style="--lbl-bg: ${light.bg}; --lbl-text: ${light.text}; --lbl-border: ${light.border}; --lbl-dark-bg: ${dark.bg}; --lbl-dark-text: ${dark.text}; --lbl-dark-border: ${dark.border}; background-color: ${style.bg}; color: ${style.text}; border-color: ${style.border};">
+                                <span class="material-symbols-outlined text-[14px]">label</span>
+                                <span id="label-name-display-${l.id}">${l.name}</span>
+                            </span>
+                            <input type="text" id="label-edit-input-${l.id}" value="${l.name}" maxlength="50" class="hidden text-xs border border-primary rounded-md px-2 py-1 bg-surface-container-lowest text-text-main focus:outline-none" />
+                        </div>
+                        <div class="flex items-center gap-1.5">
+                            <button type="button" id="btn-edit-label-${l.id}" onclick="startEditLabel(${l.id})" class="p-1 text-text-subtle hover:text-primary rounded hover:bg-surface-container-high transition-colors cursor-pointer" title="${I18n.t('labels.edit')}">
+                                <span class="material-symbols-outlined text-[16px]">edit</span>
+                            </button>
+                            <button type="button" id="btn-save-label-${l.id}" onclick="saveEditLabel(${l.id})" class="hidden px-2.5 py-1 bg-primary text-white text-xs font-semibold rounded hover:bg-surface-tint transition-colors cursor-pointer" title="Lưu">
+                                Lưu
+                            </button>
+                            <button type="button" id="btn-cancel-label-${l.id}" onclick="cancelEditLabel(${l.id}, '${l.name}')" class="hidden p-1 text-text-subtle hover:text-text-main rounded transition-colors cursor-pointer" title="Hủy">
+                                <span class="material-symbols-outlined text-[16px]">close</span>
+                            </button>
+                            <button type="button" onclick="confirmDeleteLabel(${l.id}, '${l.name}')" class="p-1 text-text-subtle hover:text-danger rounded hover:bg-danger/10 transition-colors cursor-pointer" title="${I18n.t('labels.delete')}">
+                                <span class="material-symbols-outlined text-[16px]">delete</span>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        async function submitCreateLabel() {
+            const input = document.getElementById('newLabelInput');
+            const name = (input ? input.value : '').trim();
+            const alertBox = document.getElementById('manageLabelsAlert');
+            if (alertBox) alertBox.className = 'hidden';
+
+            if (!name) {
+                if (alertBox) {
+                    alertBox.className = 'mb-4 p-2.5 rounded-lg text-xs bg-danger/10 text-danger border border-danger/20 block shrink-0';
+                    alertBox.textContent = 'Vui lòng nhập tên nhãn';
+                }
+                return;
+            }
+
+            const btn = document.getElementById('btnSubmitCreateLabel');
+            if (btn) btn.disabled = true;
+
+            try {
+                await fetchApi('/labels', {
+                    method: 'POST',
+                    body: JSON.stringify({ name })
+                });
+                if (input) input.value = '';
+                if (alertBox) {
+                    alertBox.className = 'mb-4 p-2.5 rounded-lg text-xs bg-success/10 text-success border border-success/20 block shrink-0';
+                    alertBox.textContent = I18n.t('labels.createdSuccess') || 'Tạo nhãn thành công!';
+                }
+                await loadAllLabels();
+                renderManageLabelsList();
+                renderCreateIssueLabels();
+                renderEditIssueLabels();
+            } catch(err) {
+                if (alertBox) {
+                    alertBox.className = 'mb-4 p-2.5 rounded-lg text-xs bg-danger/10 text-danger border border-danger/20 block shrink-0';
+                    alertBox.textContent = err.message || 'Lỗi khi tạo nhãn';
+                }
+            } finally {
+                if (btn) btn.disabled = false;
+            }
+        }
+
+        function startEditLabel(id) {
+            document.getElementById(`label-name-display-${id}`)?.parentElement?.classList.add('hidden');
+            const input = document.getElementById(`label-edit-input-${id}`);
+            if (input) {
+                input.classList.remove('hidden');
+                input.focus();
+            }
+            document.getElementById(`btn-edit-label-${id}`)?.classList.add('hidden');
+            document.getElementById(`btn-save-label-${id}`)?.classList.remove('hidden');
+            document.getElementById(`btn-cancel-label-${id}`)?.classList.remove('hidden');
+        }
+
+        function cancelEditLabel(id, originalName) {
+            const input = document.getElementById(`label-edit-input-${id}`);
+            if (input) {
+                input.value = originalName;
+                input.classList.add('hidden');
+            }
+            document.getElementById(`label-name-display-${id}`)?.parentElement?.classList.remove('hidden');
+            document.getElementById(`btn-edit-label-${id}`)?.classList.remove('hidden');
+            document.getElementById(`btn-save-label-${id}`)?.classList.add('hidden');
+            document.getElementById(`btn-cancel-label-${id}`)?.classList.add('hidden');
+        }
+
+        async function saveEditLabel(id) {
+            const input = document.getElementById(`label-edit-input-${id}`);
+            const newName = (input?.value || '').trim();
+            const alertBox = document.getElementById('manageLabelsAlert');
+            if (alertBox) alertBox.className = 'hidden';
+
+            if (!newName) {
+                if (alertBox) {
+                    alertBox.className = 'mb-4 p-2.5 rounded-lg text-xs bg-danger/10 text-danger border border-danger/20 block shrink-0';
+                    alertBox.textContent = 'Tên nhãn không được để trống';
+                }
+                return;
+            }
+
+            try {
+                await fetchApi(`/labels/${id}`, {
+                    method: 'PUT',
+                    body: JSON.stringify({ name: newName })
+                });
+                if (alertBox) {
+                    alertBox.className = 'mb-4 p-2.5 rounded-lg text-xs bg-success/10 text-success border border-success/20 block shrink-0';
+                    alertBox.textContent = I18n.t('labels.updatedSuccess') || 'Cập nhật nhãn thành công!';
+                }
+                await loadAllLabels();
+                renderManageLabelsList();
+                renderCreateIssueLabels();
+                renderEditIssueLabels();
+                if (currentProjectId) loadIssues(currentProjectId);
+            } catch(err) {
+                if (alertBox) {
+                    alertBox.className = 'mb-4 p-2.5 rounded-lg text-xs bg-danger/10 text-danger border border-danger/20 block shrink-0';
+                    alertBox.textContent = err.message || 'Lỗi khi cập nhật nhãn';
+                }
+            }
+        }
+
+        async function confirmDeleteLabel(id, name) {
+            const tmpl = I18n.t('labels.deleteConfirm') || 'Bạn có chắc chắn muốn xóa nhãn "{name}"?';
+            const msg = tmpl.replace('{name}', name);
+            if (!confirm(msg)) return;
+
+            const alertBox = document.getElementById('manageLabelsAlert');
+            if (alertBox) alertBox.className = 'hidden';
+
+            try {
+                await fetchApi(`/labels/${id}`, {
+                    method: 'DELETE'
+                });
+                if (alertBox) {
+                    alertBox.className = 'mb-4 p-2.5 rounded-lg text-xs bg-success/10 text-success border border-success/20 block shrink-0';
+                    alertBox.textContent = I18n.t('labels.deletedSuccess') || 'Xóa nhãn thành công!';
+                }
+                await loadAllLabels();
+                renderManageLabelsList();
+                renderCreateIssueLabels();
+                renderEditIssueLabels();
+                if (currentProjectId) loadIssues(currentProjectId);
+            } catch(err) {
+                if (alertBox) {
+                    alertBox.className = 'mb-4 p-2.5 rounded-lg text-xs bg-danger/10 text-danger border border-danger/20 block shrink-0';
+                    alertBox.textContent = err.message || 'Lỗi khi xóa nhãn';
+                }
+            }
+        }
+
+        loadUserProfile();
+        loadAllLabels();
+        loadProjects();
+    </script>
+</body>
+</html>
