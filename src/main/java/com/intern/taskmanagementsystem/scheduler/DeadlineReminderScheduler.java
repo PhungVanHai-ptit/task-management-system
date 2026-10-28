@@ -39,13 +39,14 @@ public class DeadlineReminderScheduler {
 
     /**
      * Chạy mỗi ngày lúc 8:00 sáng.
-     * Tìm issue có due_date ≤ 24h từ bây giờ và chưa DONE → publish reminder.
+     * Tìm issue có due_date nằm trong 24h tới (từ thời điểm hiện tại đến threshold) và chưa DONE → publish reminder.
      */
-    @Scheduled(cron = "0 * 8 * * *")
+    @Scheduled(cron = "0 0 8 * * *")
     @Transactional
     public void sendDeadlineReminders() {
-        LocalDateTime threshold = LocalDateTime.now().plusHours(deadlineReminderHours);
-        List<Issue> upcomingIssues = issueRepository.findUpcomingDeadlineIssues(threshold);
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime threshold = now.plusHours(deadlineReminderHours);
+        List<Issue> upcomingIssues = issueRepository.findUpcomingDeadlineIssues(now, threshold);
 
         log.info("Deadline reminder scheduler: found {} issues approaching deadline", upcomingIssues.size());
 

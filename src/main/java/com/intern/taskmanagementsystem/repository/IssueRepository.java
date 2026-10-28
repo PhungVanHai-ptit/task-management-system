@@ -115,9 +115,13 @@ public interface IssueRepository extends JpaRepository<Issue, Long> {
         return countIssuesByProjectAndStatus(projectIds, null);
     }
 
-    // Issue sắp đến hạn (≤ X giờ, chưa DONE) — dùng cho scheduler
-    @Query("SELECT i FROM Issue i WHERE i.dueDate IS NOT NULL AND i.dueDate <= :threshold AND i.status <> com.intern.taskmanagementsystem.enums.IssueStatus.DONE")
-    List<Issue> findUpcomingDeadlineIssues(@Param("threshold") LocalDateTime threshold);
+    // Issue sắp đến hạn (từ hiện tại đến <= threshold, chưa DONE) — dùng cho scheduler
+    @Query("SELECT i FROM Issue i WHERE i.dueDate IS NOT NULL AND i.dueDate >= :now AND i.dueDate <= :threshold AND i.status <> com.intern.taskmanagementsystem.enums.IssueStatus.DONE")
+    List<Issue> findUpcomingDeadlineIssues(@Param("now") LocalDateTime now, @Param("threshold") LocalDateTime threshold);
+
+    default List<Issue> findUpcomingDeadlineIssues(LocalDateTime threshold) {
+        return findUpcomingDeadlineIssues(LocalDateTime.now(), threshold);
+    }
 
     // Native query: top N user có nhiều issue overdue nhất
     @Query(value = """
